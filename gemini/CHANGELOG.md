@@ -8,6 +8,16 @@
 - date: 2026-04-17
   type: feat
   target: src/reporter.py
+  change: save_usage_plot (matplotlib long-tail bar) + save_cold_wall (grid of unused tiles)
+  rationale: Visual companions to the text report; cold-photo wall is the "here are your forgotten memories" payoff
+  action: matplotlib Agg backend for headless rendering; tile wall center-crops each cold photo to square
+  result: 2/2 new tests pass
+  validation: pytest tests/test_reporter.py -v
+  status: stable
+
+- date: 2026-04-17
+  type: feat
+  target: src/reporter.py
   change: build_text_report(tile_paths, usage, tags, total_cells) — top-5 offenders, cold photos, tag-weighted composition breakdown
   rationale: This IS the shareable artifact (朋友圈 one-shot), far more viral than the mosaic itself
   action: Sort usage desc, enumerate zero-use paths, tag-weight by cell count

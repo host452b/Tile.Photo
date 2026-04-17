@@ -23,3 +23,31 @@ def test_text_report_contains_key_stats():
     assert "冷宫" in report or "cold" in report.lower()
     # Must mention top tag breakdown
     assert "Japan" in report
+
+
+from pathlib import Path
+from PIL import Image
+
+
+def test_save_usage_plot_writes_png(tmp_path: Path):
+    from src.reporter import save_usage_plot
+    usage = {i: (100 - i * 5) for i in range(20)}
+    out_path = tmp_path / "hist.png"
+    save_usage_plot(usage, str(out_path))
+    assert out_path.exists() and out_path.stat().st_size > 0
+
+
+def test_save_cold_wall_writes_png(tmp_path: Path):
+    from src.reporter import save_cold_wall
+    tile_paths = []
+    for i in range(6):
+        p = tmp_path / f"t{i}.jpg"
+        Image.new("RGB", (64, 64), (i * 40, 100, 100)).save(p)
+        tile_paths.append(str(p))
+    usage = {0: 10, 1: 5}  # 2..5 cold
+    out_path = tmp_path / "cold.png"
+    save_cold_wall(tile_paths, usage, str(out_path), cols=2, tile_px=32)
+    assert out_path.exists() and out_path.stat().st_size > 0
+    img = Image.open(out_path)
+    # 4 cold tiles, cols=2 → 2 rows × 2 cols
+    assert img.size == (2 * 32, 2 * 32)
