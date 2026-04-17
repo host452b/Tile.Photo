@@ -73,3 +73,47 @@ def test_skips_corrupt_files(tmp_path, caplog):
         demo_mode=False,
     )
     assert pool.lab.shape == (1, 3)
+
+
+def test_second_scan_reuses_cache(tmp_path, monkeypatch):
+    base = tmp_path / "photos"
+    base.mkdir()
+    _write_solid_jpg(base / "a.jpg", (100, 150, 200))
+    _write_solid_jpg(base / "b.jpg", (200, 50, 100))
+
+    cache = tmp_path / "cache"
+    pool1 = scan.build_pool(base, cache, tile_px=24)
+
+    calls: list[Path] = []
+    original = scan._load_and_thumbnail
+
+    def spy(path, tile_px):
+        calls.append(path)
+        return original(path, tile_px)
+
+    monkeypatch.setattr(scan, "_load_and_thumbnail", spy)
+    pool2 = scan.build_pool(base, cache, tile_px=24)
+
+    assert calls == []
+    np.testing.assert_allclose(pool1.lab, pool2.lab)
+
+
+def test_changed_tile_px_invalidates_cache(tmp_path, monkeypatch):
+    base = tmp_path / "photos"
+    base.mkdir()
+    _write_solid_jpg(base / "a.jpg", (100, 150, 200))
+
+    cache = tmp_path / "cache"
+    scan.build_pool(base, cache, tile_px=24)
+
+    calls: list[Path] = []
+    original = scan._load_and_thumbnail
+
+    def spy(path, tile_px):
+        calls.append(path)
+        return original(path, tile_px)
+
+    monkeypatch.setattr(scan, "_load_and_thumbnail", spy)
+    scan.build_pool(base, cache, tile_px=32)
+
+    assert len(calls) == 1

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import colorsys
 import hashlib
+import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -78,6 +79,26 @@ def _synthesize_demo_tiles(
     return TilePool(lab=labs, thumbs_paths=thumbs_paths, source_paths=source_paths)
 
 
+CACHE_FILE = "pool.json"
+
+
+def _load_cache(cache_dir: Path, tile_px: int) -> dict:
+    p = cache_dir / CACHE_FILE
+    if not p.exists():
+        return {"tile_px": tile_px, "entries": {}}
+    try:
+        data = json.loads(p.read_text())
+    except json.JSONDecodeError:
+        return {"tile_px": tile_px, "entries": {}}
+    if data.get("tile_px") != tile_px:
+        return {"tile_px": tile_px, "entries": {}}
+    return data
+
+
+def _save_cache(cache_dir: Path, data: dict) -> None:
+    (cache_dir / CACHE_FILE).write_text(json.dumps(data))
+
+
 def _scan_directory(
     base_dir: Path,
     cache_dir: Path,
@@ -85,6 +106,8 @@ def _scan_directory(
 ) -> TilePool:
     thumbs_dir = cache_dir / "thumbs"
     thumbs_dir.mkdir(parents=True, exist_ok=True)
+    cache = _load_cache(cache_dir, tile_px)
+    entries: dict[str, dict] = cache["entries"]
 
     labs: list[np.ndarray] = []
     thumbs_paths: list[str] = []
@@ -92,16 +115,39 @@ def _scan_directory(
 
     files = list(_iter_candidate_files(base_dir))
     for path in tqdm(files, desc="scan", unit="img"):
+        key = str(path)
+        mtime = path.stat().st_mtime
+        cached = entries.get(key)
+        thumb_path = thumbs_dir / f"{_sha1(key)}.jpg"
+
+        if cached and cached["mtime"] == mtime and Path(cached["thumb"]).exists():
+            labs.append(np.asarray(cached["lab"], dtype=np.float32))
+            thumbs_paths.append(cached["thumb"])
+            source_paths.append(key)
+            continue
+
         try:
             tile_rgb = _load_and_thumbnail(path, tile_px)
         except Exception as e:
             logger.warning("skip %s: %s", path, e)
             continue
-        thumb_path = thumbs_dir / f"{_sha1(str(path))}.jpg"
         Image.fromarray(tile_rgb).save(thumb_path, quality=92)
-        labs.append(_lab_mean(tile_rgb))
+        lab = _lab_mean(tile_rgb)
+        entries[key] = {
+            "mtime": mtime,
+            "lab": lab.tolist(),
+            "thumb": str(thumb_path),
+        }
+        labs.append(lab)
         thumbs_paths.append(str(thumb_path))
-        source_paths.append(str(path))
+        source_paths.append(key)
+
+    alive = set(str(p) for p in files)
+    for dead in list(entries.keys()):
+        if dead not in alive:
+            entries.pop(dead)
+
+    _save_cache(cache_dir, {"tile_px": tile_px, "entries": entries})
 
     if not labs:
         return TilePool(
