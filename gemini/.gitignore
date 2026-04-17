@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.cache/
+.venv/
+.ipynb_checkpoints/
+*.egg-info/
+.pytest_cache/
+.DS_Store
+samples/**/*.jpg
+samples/**/*.jpeg
+samples/**/*.png
+!samples/.gitkeep
+output/
