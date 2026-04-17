@@ -24,3 +24,13 @@
   result: Core install trims to ~200 MB; CLIP install is opt-in
   validation: pytest --collect-only still returns 0 tests; diff inspected
   status: stable
+
+- date: 2026-04-17
+  type: feat
+  target: src/config.py
+  change: PhotomosaicConfig dataclass with validation (tau in [0,1], positive grid/tile_px, mode enum)
+  rationale: Centralize the 3 sliders (lambda/mu/tau) + modes so Cell 2 of notebook is the single UI surface
+  action: Dataclass + __post_init__ validation; 4 tests for defaults + each invariant
+  result: 4/4 tests pass
+  validation: pytest tests/test_config.py -v
+  status: stable
