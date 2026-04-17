@@ -41,11 +41,12 @@ def test_export_deepzoom_pyramid_has_multiple_levels(tmp_path: Path):
 
 def test_export_deepzoom_dzi_xml_is_valid(tmp_path: Path):
     src = tmp_path / "tiny.png"
-    Image.fromarray((np.random.rand(300, 200, 3) * 255).astype(np.uint8)).save(src)
+    # Use Image.new so PIL size is unambiguous (width=300, height=200)
+    Image.new("RGB", (300, 200), (128, 64, 200)).save(src)
     out_dir = tmp_path / "out"
     export_deepzoom(str(src), str(out_dir), tile_size=128, overlap=2)
     dzi = (out_dir / "mosaic.dzi").read_text()
-    # Basic XML sanity
+    # Basic XML sanity — DZI Width/Height match PIL's (width, height) = (300, 200)
     assert 'TileSize="128"' in dzi
     assert 'Overlap="2"' in dzi
     assert 'Format="jpg"' in dzi

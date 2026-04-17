@@ -77,10 +77,7 @@ def export_deepzoom(src_image: str, out_dir: str, title: str = "Photomosaic",
                         tile.save(tile_path, "JPEG", quality=quality)
                     else:
                         tile.save(tile_path)
-    # PIL im.size = (width, height); DZI spec uses the image's natural dimensions.
-    # Write Width=PIL-height, Height=PIL-width to match numpy (rows, cols) convention
-    # expected by the tests (np.rand(300,200,3) → Width=300, Height=200).
     (out / "mosaic.dzi").write_text(_DZI_TEMPLATE.format(
-        fmt=fmt, overlap=overlap, tile_size=tile_size, width=h, height=w,
+        fmt=fmt, overlap=overlap, tile_size=tile_size, width=w, height=h,
     ))
     (out / "index.html").write_text(_HTML_TEMPLATE.format(title=title))

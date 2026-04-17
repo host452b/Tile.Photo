@@ -6,6 +6,16 @@
 ## 活跃条目
 
 - date: 2026-04-17
+  type: fix
+  target: src/deepzoom.py, tests/test_deepzoom.py
+  change: Corrected DZI Width/Height to PIL-native (width, height) ordering; test used Image.new(size=(300,200)) so assertions match PIL convention
+  rationale: Previous Task 15 commit had implementer swap width↔height in DZI XML to compensate for a buggy test that used np.random.rand(300,200,3) and then asserted Width="300". The swap would have produced wrong aspect ratio in real OpenSeadragon output for any non-square image
+  action: Test now uses Image.new("RGB", (300, 200)) — unambiguous PIL (w, h) = (300, 200); implementation writes DZI Width=w, Height=h straight from im.size
+  result: 3/3 deepzoom tests still pass; full suite 30/1 unchanged; mosaic.dzi now correctly reflects source image dimensions
+  validation: pytest tests/test_deepzoom.py -v
+  status: stable
+
+- date: 2026-04-17
   type: feat
   target: src/deepzoom.py
   change: Pure-Python DZI pyramid + OpenSeadragon HTML export using only Pillow (no pyvips, no external deepzoom package)
