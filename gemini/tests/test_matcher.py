@@ -23,3 +23,42 @@ def test_color_topk_k_capped_to_tile_count():
     patches_lab = np.random.randn(2, 3, 3).astype(np.float32) * 30 + 50
     idx, _ = color_topk(patches_lab, tile_lab, k=10)
     assert idx.shape == (2, 3, 5)  # capped to N=5
+
+
+from src.matcher import assign_with_penalties
+
+
+def test_repeat_penalty_spreads_usage():
+    # 4 cells all want tile 0 (identical LAB), 3 tiles available
+    tile_lab = np.array([[50, 0, 0], [50, 5, 5], [50, -5, -5]], dtype=np.float32)
+    patches_lab = np.full((2, 2, 3), [50, 0, 0], dtype=np.float32)
+    idx, dist = color_topk(patches_lab, tile_lab, k=3)
+    # With no penalty, every cell picks tile 0
+    no_pen = assign_with_penalties(idx, dist, lambda_repeat=0.0, mu_neighbor=0.0)
+    assert (no_pen == 0).all()
+    # With heavy repeat penalty, at least one other tile must appear
+    with_pen = assign_with_penalties(idx, dist, lambda_repeat=100.0, mu_neighbor=0.0)
+    assert len(set(with_pen.ravel().tolist())) > 1
+
+
+def test_neighbor_penalty_breaks_adjacency():
+    # 2 tiles: both roughly equal distance to all cells
+    tile_lab = np.array([[50, 10, 0], [50, 0, 10]], dtype=np.float32)
+    patches_lab = np.full((2, 4, 3), [50, 5, 5], dtype=np.float32)
+    idx, dist = color_topk(patches_lab, tile_lab, k=2)
+    with_pen = assign_with_penalties(idx, dist, lambda_repeat=0.0, mu_neighbor=1000.0)
+    # No two horizontally adjacent cells should share the same tile
+    for r in range(with_pen.shape[0]):
+        for c in range(with_pen.shape[1] - 1):
+            assert with_pen[r, c] != with_pen[r, c + 1]
+
+
+def test_assign_emits_callback_per_cell():
+    tile_lab = np.array([[50, 0, 0], [50, 30, 30]], dtype=np.float32)
+    patches_lab = np.full((1, 2, 3), [50, 15, 15], dtype=np.float32)
+    idx, dist = color_topk(patches_lab, tile_lab, k=2)
+    events = []
+    assign_with_penalties(idx, dist, lambda_repeat=0.1, mu_neighbor=0.0,
+                          on_cell=lambda r, c, chosen, candidates: events.append((r, c, chosen)))
+    assert len(events) == 2
+    assert [e[:2] for e in events] == [(0, 0), (0, 1)]

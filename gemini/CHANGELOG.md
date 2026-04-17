@@ -7,6 +7,16 @@
 
 - date: 2026-04-17
   type: feat
+  target: src/matcher.py
+  change: assign_with_penalties(topk_idx, topk_dist, lambda_repeat, mu_neighbor, on_cell) — greedy raster-scan with usage + neighbor penalties + per-cell callback
+  rationale: lambda solves "one photo dominates" (玩点 B); mu solves "same photo clumps in a region"; on_cell gives the notebook its live-thinking printout (玩点 "能看见算法在思考")
+  action: Greedy O(rows*cols*k), score = sqrt(L2 LAB dist) + lambda*log1p(usage) + mu*neighbor_clash
+  result: 3/3 new tests pass; zero-penalty regression still passes
+  validation: pytest tests/test_matcher.py -v
+  status: stable
+
+- date: 2026-04-17
+  type: feat
   target: pyproject.toml
   change: Add 3-line pytest config pinning pythonpath=["."] and testpaths=["tests"]
   rationale: Preemptive fix against ambient sys.path collisions — machine has other /src dirs (gitlab-mr-analyzer/src with __init__.py, auto-yes/.../src) that are one same-named module away from hijacking our imports. The earlier conftest.py try-failed entry predicted pyproject.toml pythonpath as the correct escape hatch; Task 8's implementer flagged that with 6+ source modules now, collision is increasingly likely
