@@ -64,3 +64,33 @@ def test_end_to_end_pure_colors_match_exactly(tmp_path):
             assert diff < 8, (
                 f"cell ({row},{col}) off: got {mean}, expected {expected_color[row, col]}"
             )
+
+
+def test_end_to_end_with_knobs(tmp_path):
+    base = tmp_path / "photos"
+    base.mkdir()
+    for i, rgb in enumerate(PALETTE):
+        _solid_jpg(base / f"c{i}.jpg", rgb)
+
+    pool = scan.build_pool(base, tmp_path / "cache", tile_px=24)
+
+    grid_h, grid_w = 4, 10
+    tile_px = 24
+    target_rgb = np.zeros((grid_h * tile_px, grid_w * tile_px, 3), dtype=np.uint8)
+    for col in range(grid_w):
+        target_rgb[:, col * tile_px : (col + 1) * tile_px] = PALETTE[col]
+
+    from skimage.color import rgb2lab
+
+    target_lab = rgb2lab(target_rgb.astype(np.float32) / 255.0)
+    target_lab_grid = target_lab.reshape(
+        grid_h, tile_px, grid_w, tile_px, 3
+    ).mean(axis=(1, 3)).astype(np.float32)
+
+    idx = match.match_grid(target_lab_grid, pool.lab, lambda_=2.0, mu=10.0)
+    img, usage = render.render_mosaic_with_usage(
+        idx, pool, tile_px, tmp_path / "out.png",
+        target_rgb=target_rgb, tone_strength=0.3,
+    )
+    assert img.size == (grid_w * tile_px, grid_h * tile_px)
+    assert len(usage) >= len(PALETTE) // 2
