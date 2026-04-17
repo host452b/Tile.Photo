@@ -8,6 +8,16 @@
 - date: 2026-04-17
   type: feat
   target: chatgpt/mosaic_core.py
+  change: 实现 build_report(assignment, tile_records, elapsed, bad_files) -> ReportBundle(文字 + 使用柱状 + 冷宫墙)
+  rationale: 报告是这个玩具"发朋友群秒上桌"的核心;TOP 5 + 冷宫 + 坏图三段式
+  action: Counter 统计使用次数;matplotlib 画排序柱状图;至多 5×5=25 张冷宫缩略图墙
+  result: 20 tile + 4×5=20 格 case 结构字段齐全,text 含"扫到""冷宫""耗时数字";两图都是 matplotlib.figure.Figure
+  validation: tests/test_transfer.py::test_build_report_structural_fields 绿
+  status: stable
+
+- date: 2026-04-17
+  type: feat
+  target: chatgpt/mosaic_core.py
   change: 实现 scan_tile_pool(dir, cache_path) -> (records, bad_files),递归扫图建 LAB+64×64 thumb 并 pickle 缓存
   rationale: 真实相册几千张照片二次跑时不用重读像素;缓存版本号不匹配直接重算
   action: rglob JPG/PNG/JPEG,PIL 读取后 resize 64×64;损坏文件进 bad_files 不中断;版本化 pickle

@@ -266,3 +266,69 @@ def scan_tile_pool(
             fh,
         )
     return records, bad_files
+
+
+# ---------- report ----------
+
+def build_report(
+    assignment: np.ndarray,
+    tile_records: list[TileRecord],
+    elapsed_seconds: float,
+    bad_files: list[Path],
+) -> ReportBundle:
+    """Produce a self-deprecating-style textual report + usage bar + cold-photo wall."""
+    import matplotlib.pyplot as plt
+    from collections import Counter
+
+    flat = assignment.ravel()
+    counts = Counter(int(x) for x in flat)
+    total_cells = flat.size
+    used_set = set(counts.keys())
+    cold_idxs = [i for i in range(len(tile_records)) if i not in used_set]
+
+    top_used = counts.most_common(5)
+    lines = []
+    lines.append(f"本次扫到 {len(tile_records)} 张 tile,跑了 {elapsed_seconds:.2f} 秒,生成了 {total_cells} 个格子。")
+    lines.append(f"坏图 {len(bad_files)} 张,冷宫照片 {len(cold_idxs)} 张。")
+    lines.append("")
+    lines.append("TOP 5 最常被贴:")
+    for idx, count in top_used:
+        name = tile_records[idx].path.name if tile_records[idx].path else f"<tile {idx}>"
+        lines.append(f"  {name}: {count} 次")
+    lines.append("")
+    lines.append(f"冷宫照片(前 5):")
+    for idx in cold_idxs[:5]:
+        name = tile_records[idx].path.name if tile_records[idx].path else f"<tile {idx}>"
+        lines.append(f"  {name}")
+    if bad_files:
+        lines.append("")
+        lines.append("坏图列表:")
+        for p in bad_files:
+            lines.append(f"  {p.name}")
+
+    # Usage bar figure.
+    bar_fig, bar_ax = plt.subplots(figsize=(10, 4))
+    sorted_counts = sorted(counts.values(), reverse=True)
+    bar_ax.bar(range(len(sorted_counts)), sorted_counts, color="#5b8cff")
+    bar_ax.set_title("Tile usage (sorted desc)")
+    bar_ax.set_xlabel("tile rank")
+    bar_ax.set_ylabel("uses")
+
+    # Cold wall figure — up to 25 thumbs in a 5×5 grid (or fewer if no cold).
+    wall_n = min(25, len(cold_idxs))
+    cols = 5 if wall_n >= 5 else max(1, wall_n)
+    rows = max(1, (wall_n + cols - 1) // cols)
+    wall_fig, wall_axes = plt.subplots(rows, cols, figsize=(cols * 1.5, rows * 1.5))
+    axes_flat = np.atleast_1d(wall_axes).ravel()
+    for i, ax in enumerate(axes_flat):
+        if i < wall_n:
+            ax.imshow(tile_records[cold_idxs[i]].rgb_thumb)
+        ax.axis("off")
+    wall_fig.suptitle(f"冷宫照片 ({len(cold_idxs)} 张未被使用)")
+    wall_fig.tight_layout()
+
+    return ReportBundle(
+        text="\n".join(lines),
+        usage_bar_fig=bar_fig,
+        cold_wall_fig=wall_fig,
+    )

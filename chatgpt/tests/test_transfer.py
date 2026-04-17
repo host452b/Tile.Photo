@@ -114,3 +114,20 @@ def test_scan_tile_pool_uses_cache(tmp_path):
     tiles2, _ = scan_tile_pool(d, cache)
     assert len(tiles1) == len(tiles2)
     assert (tiles1[0].lab_mean == tiles2[0].lab_mean).all()
+
+
+def test_build_report_structural_fields(tmp_path):
+    """build_report returns a ReportBundle whose text contains key headlines."""
+    import numpy as np
+    from mosaic_core import TileRecord, build_report, ensure_seed_tiles, scan_tile_pool
+    ensure_seed_tiles(tmp_path / "tiles", n=20)
+    records, bad = scan_tile_pool(tmp_path / "tiles", tmp_path / "cache.pkl")
+    assignment = np.zeros((4, 5), dtype=np.int64)  # all cells use tile 0
+    bundle = build_report(assignment, records, elapsed_seconds=3.14, bad_files=bad)
+    assert "扫到" in bundle.text or "tiles" in bundle.text
+    assert "冷宫" in bundle.text or "cold" in bundle.text
+    assert "3.14" in bundle.text or "3.1" in bundle.text
+    # Figures are matplotlib Figures.
+    import matplotlib
+    assert isinstance(bundle.usage_bar_fig, matplotlib.figure.Figure)
+    assert isinstance(bundle.cold_wall_fig, matplotlib.figure.Figure)
