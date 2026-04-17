@@ -7,6 +7,29 @@
 
 - date: 2026-04-17
   type: feat
+  target: src/deepzoom.py
+  change: Pure-Python DZI pyramid + OpenSeadragon HTML export using only Pillow (no pyvips, no external deepzoom package)
+  rationale: Plan originally specified pyvips.dzsave with deepzoom.py fallback; on this machine pyvips+libvips are absent and the `deepzoom` PyPI package has been withdrawn. Pillow-based implementation (~50 lines) aligns with "toy, no heavy deps" user positioning
+  action: For each pyramid level 0..ceil(log2(max_dim)), LANCZOS-resize then crop tile_size+overlap squares; write mosaic.dzi XML + mosaic_files/<level>/<c>_<r>.jpg; ship an OpenSeadragon-loading index.html template
+  result: 3/3 tests pass — files exist, pyramid has expected level count (0..log2), DZI XML has correct attrs
+  validation: pytest tests/test_deepzoom.py -v
+  status: stable
+
+- date: 2026-04-17
+  type: try-failed
+  target: requirements.txt, deepzoom install path
+  change: Planned pyvips + deepzoom-package dependency chain was unusable
+  rationale: Plan's assumption (either pyvips via brew vips, or pip install deepzoom) failed: libvips not installed + deepzoom not on PyPI
+  action: Attempted pip install deepzoom → "No matching distribution found"; checked which vips → not found
+  result: Failed both paths; pivoted to pure-Python Pillow-only DZI generator
+  problem_context: Task 15 needs a DZI pyramid + OpenSeadragon HTML output
+  workaround_reason: For a local toy, asking user to install libvips (brew + build) or a non-existent pypi package is user-hostile
+  next_action: Implement DZI pyramid directly in Python using Pillow (see sibling feat entry)
+  next_result: Success — 3/3 tests pass with zero external binaries
+  status: reverted
+
+- date: 2026-04-17
+  type: feat
   target: src/reporter.py
   change: save_usage_plot (matplotlib long-tail bar) + save_cold_wall (grid of unused tiles)
   rationale: Visual companions to the text report; cold-photo wall is the "here are your forgotten memories" payoff
