@@ -22,3 +22,33 @@ def test_split_target_uniform_gray_constant_lab():
     assert L_plane.max() - L_plane.min() < 0.01
     # L ~= 54 for sRGB 128 gray.
     assert 52 < L_plane.mean() < 56
+
+
+def test_render_mosaic_output_size():
+    """Output PIL image size = (grid_w * tile_px, grid_h * tile_px)."""
+    from mosaic_core import TileRecord, render_mosaic
+    # One deterministic tile: solid red 16×16.
+    tile_rgb = np.full((16, 16, 3), fill_value=0, dtype=np.uint8)
+    tile_rgb[..., 0] = 255
+    tile_lab = np.array([53.24, 80.09, 67.20], dtype=np.float32)
+    records = [TileRecord(path=None, lab_mean=tile_lab, rgb_thumb=tile_rgb)]
+    # 4×3 grid, all cells point to tile 0.
+    assignment = np.zeros((3, 4), dtype=np.int64)
+    target_lab = np.broadcast_to(tile_lab, (3, 4, 3)).copy()
+    img = render_mosaic(assignment, records, tile_px=16, tau=0.0, target_lab=target_lab)
+    assert img.size == (4 * 16, 3 * 16)
+
+
+def test_render_mosaic_tau_zero_preserves_tile_bytes():
+    """τ=0 means every cell is the tile's raw rgb_thumb (byte-exact)."""
+    from mosaic_core import TileRecord, render_mosaic
+    rng = np.random.default_rng(7)
+    tile_rgb = rng.integers(0, 256, size=(16, 16, 3), dtype=np.uint8)
+    tile_lab = np.array([50.0, 0.0, 0.0], dtype=np.float32)
+    records = [TileRecord(path=None, lab_mean=tile_lab, rgb_thumb=tile_rgb)]
+    assignment = np.zeros((2, 2), dtype=np.int64)
+    target_lab = np.full((2, 2, 3), [30.0, 20.0, 5.0], dtype=np.float32)  # different from tile
+    img = render_mosaic(assignment, records, tile_px=16, tau=0.0, target_lab=target_lab)
+    out = np.asarray(img)
+    # Top-left 16x16 block must equal tile_rgb.
+    np.testing.assert_array_equal(out[:16, :16], tile_rgb)

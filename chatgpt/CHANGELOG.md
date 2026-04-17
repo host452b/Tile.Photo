@@ -8,6 +8,16 @@
 - date: 2026-04-17
   type: feat
   target: chatgpt/mosaic_core.py
+  change: 实现 render_mosaic(assignment, tile_records, tile_px, τ, target_lab) -> PIL.Image
+  rationale: 把 assignment 表变成可视化像素矩阵;τ>0 时每 tile 贴前做 reinhard_transfer
+  action: 双层 for 循环按格贴图,尺寸不匹配时 resize;短路 τ=0 省去 LAB 往返开销
+  result: 4×3 grid 输出 64×48 PIL Image;τ=0 块内字节完全等于 tile 原图
+  validation: tests/test_transfer.py::test_render_mosaic_* 绿
+  status: stable
+
+- date: 2026-04-17
+  type: feat
+  target: chatgpt/mosaic_core.py
   change: 实现 split_target(img, grid_w, grid_h) -> float32[H, W, 3],输出每 patch LAB 均值
   rationale: 匹配阶段需要"每格目标颜色"作为 KNN 查询向量
   action: resize 到 grid_w*patch_w × grid_h*patch_h 后 reshape+mean 向量化计算,无 Python 循环

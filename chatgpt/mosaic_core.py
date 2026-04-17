@@ -99,3 +99,32 @@ def split_target(img: Image.Image, grid_w: int, grid_h: int) -> np.ndarray:
     # Reshape to (grid_h, patch_h, grid_w, patch_w, 3) then mean over patch_h, patch_w.
     reshaped = lab.reshape(grid_h, patch_h, grid_w, patch_w, 3)
     return reshaped.mean(axis=(1, 3)).astype(np.float32)
+
+
+def render_mosaic(
+    assignment: np.ndarray,
+    tile_records: list[TileRecord],
+    tile_px: int,
+    tau: float,
+    target_lab: np.ndarray,
+) -> Image.Image:
+    """Paste tiles onto an (grid_h*tile_px, grid_w*tile_px) canvas.
+
+    assignment: int64[grid_h, grid_w] — tile record index per cell.
+    target_lab: float32[grid_h, grid_w, 3] — per-cell LAB target for τ transfer.
+    """
+    grid_h, grid_w = assignment.shape
+    canvas = np.zeros((grid_h * tile_px, grid_w * tile_px, 3), dtype=np.uint8)
+    for r in range(grid_h):
+        for c in range(grid_w):
+            rec = tile_records[int(assignment[r, c])]
+            thumb = rec.rgb_thumb
+            if thumb.shape[0] != tile_px or thumb.shape[1] != tile_px:
+                thumb = np.asarray(
+                    Image.fromarray(thumb).resize((tile_px, tile_px), Image.BILINEAR)
+                )
+            if tau > 0.0:
+                thumb = reinhard_transfer(thumb, target_lab[r, c], tau)
+            y0, x0 = r * tile_px, c * tile_px
+            canvas[y0:y0 + tile_px, x0:x0 + tile_px] = thumb
+    return Image.fromarray(canvas)
