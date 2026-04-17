@@ -148,3 +148,41 @@ def knn_candidates(target_lab: np.ndarray, faiss_index, k: int = 32) -> np.ndarr
     effective_k = min(k, faiss_index.ntotal)
     _dists, idxs = faiss_index.search(query, effective_k)
     return idxs.astype(np.int64)
+
+
+def rerank(
+    candidate_idxs: np.ndarray,
+    tile_labs: np.ndarray,
+    target_lab_patch: np.ndarray,
+    usage_counts: dict,
+    neighbor_tile_idxs: list[int],
+    lambda_repeat: float,
+    mu_neighbor: float,
+) -> int:
+    """Pick the best tile index from candidates via ΔE + usage + neighbor penalties.
+
+    score = ΔE_CIEDE2000(tile, target) + λ·log(1+usage) + μ·max_sim_to_any_neighbor
+
+    where neighbor_similarity = 1 / (1 + ΔE_CIEDE2000(tile, neighbor)).
+
+    neighbor_tile_idxs is the list of already-filled left/up neighbor tile indices
+    in scanline order; may be empty or have 1–2 entries.
+    """
+    best_idx = -1
+    best_score = math.inf
+    for raw_idx in candidate_idxs:
+        idx = int(raw_idx)
+        lab = tile_labs[idx]
+        de = ciede2000(lab, target_lab_patch)
+        usage_pen = lambda_repeat * math.log1p(usage_counts.get(idx, 0))
+        if neighbor_tile_idxs:
+            sim = max(
+                1.0 / (1.0 + ciede2000(lab, tile_labs[n])) for n in neighbor_tile_idxs
+            )
+        else:
+            sim = 0.0
+        score = de + usage_pen + mu_neighbor * sim
+        if score < best_score:
+            best_score = score
+            best_idx = idx
+    return best_idx

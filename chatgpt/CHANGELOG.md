@@ -8,6 +8,16 @@
 - date: 2026-04-17
   type: feat
   target: chatgpt/mosaic_core.py
+  change: 实现 rerank(candidate_idxs, ..., λ, μ) -> tile_idx,结合 ΔE + λ·log(1+usage) + μ·max_neighbor_sim
+  rationale: λ 摊开重复使用,μ 避免同色扎堆;比纯最近邻出图干净得多
+  action: 在 top-k 候选里逐个算三项和,取最小;neighbor_sim = 1/(1+ΔE) 天然有界
+  result: λ=μ=0 退化为 argmin ΔE;λ=100+usage=1000 可翻盘;μ=100+克隆邻居可翻盘
+  validation: tests/test_matching.py::test_rerank_* (3 个) 绿
+  status: stable
+
+- date: 2026-04-17
+  type: feat
+  target: chatgpt/mosaic_core.py
   change: 实现 build_faiss_index / knn_candidates,做 LAB 空间 top-k 候选查询
   rationale: N < 10k 底图量级,IndexFlatL2 就够用,无需 IVF;有 k > N 时自动降级为 N
   action: lazy import faiss;把 target 从 (H, W, 3) reshape 成 (H·W, 3) 批量查询

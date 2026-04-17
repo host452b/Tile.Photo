@@ -28,3 +28,83 @@ def test_knn_candidates_shape_and_legal_indices():
     assert result.shape == (4 * 6, 8)
     assert result.min() >= 0
     assert result.max() < 50
+
+
+def test_rerank_lambda_zero_mu_zero_is_argmin_delta_e():
+    """With both penalties off, rerank returns the candidate with smallest ΔE."""
+    from mosaic_core import rerank
+    tile_labs = np.array(
+        [[50.0, 0.0, 0.0], [50.0, 20.0, 0.0], [50.0, 40.0, 0.0]],
+        dtype=np.float32,
+    )
+    target = np.array([50.0, 35.0, 0.0], dtype=np.float32)  # closest to index 2
+    best = rerank(
+        candidate_idxs=np.array([0, 1, 2], dtype=np.int64),
+        tile_labs=tile_labs,
+        target_lab_patch=target,
+        usage_counts={},
+        neighbor_tile_idxs=[],
+        lambda_repeat=0.0,
+        mu_neighbor=0.0,
+    )
+    assert best == 2
+
+
+def test_rerank_lambda_penalizes_heavy_usage():
+    """Heavy λ shifts choice away from an over-used tile toward an unused one."""
+    from mosaic_core import rerank
+    tile_labs = np.array(
+        [[50.0, 0.0, 0.0], [50.0, 5.0, 0.0]],  # tile 0 slightly closer than tile 1
+        dtype=np.float32,
+    )
+    target = np.array([50.0, 0.0, 0.0], dtype=np.float32)
+    best_cold = rerank(
+        candidate_idxs=np.array([0, 1], dtype=np.int64),
+        tile_labs=tile_labs,
+        target_lab_patch=target,
+        usage_counts={},
+        neighbor_tile_idxs=[],
+        lambda_repeat=0.0,
+        mu_neighbor=0.0,
+    )
+    assert best_cold == 0
+    best_hot = rerank(
+        candidate_idxs=np.array([0, 1], dtype=np.int64),
+        tile_labs=tile_labs,
+        target_lab_patch=target,
+        usage_counts={0: 1000},
+        neighbor_tile_idxs=[],
+        lambda_repeat=100.0,
+        mu_neighbor=0.0,
+    )
+    assert best_hot == 1
+
+
+def test_rerank_mu_penalizes_similar_neighbor():
+    """Heavy μ shifts choice away from tile that looks like the left/up neighbor."""
+    from mosaic_core import rerank
+    tile_labs = np.array(
+        [[50.0, 0.0, 0.0], [50.0, 30.0, 0.0], [50.0, 0.0, 0.0]],
+        dtype=np.float32,
+    )
+    target = np.array([50.0, 0.0, 0.0], dtype=np.float32)
+    best_no_neighbor = rerank(
+        candidate_idxs=np.array([0, 1], dtype=np.int64),
+        tile_labs=tile_labs,
+        target_lab_patch=target,
+        usage_counts={},
+        neighbor_tile_idxs=[],
+        lambda_repeat=0.0,
+        mu_neighbor=0.0,
+    )
+    assert best_no_neighbor == 0
+    best_with_clone_neighbor = rerank(
+        candidate_idxs=np.array([0, 1], dtype=np.int64),
+        tile_labs=tile_labs,
+        target_lab_patch=target,
+        usage_counts={},
+        neighbor_tile_idxs=[2],
+        lambda_repeat=0.0,
+        mu_neighbor=100.0,
+    )
+    assert best_with_clone_neighbor == 1
