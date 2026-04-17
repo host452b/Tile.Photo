@@ -14,3 +14,13 @@
   result: Repo has no code yet, only structure
   validation: Tree inspection + pytest collects zero tests successfully
   status: stable
+
+- date: 2026-04-17
+  type: fix
+  target: requirements.txt, requirements-clip.txt, README.md, .gitignore
+  change: Split torch/open_clip_torch into optional requirements-clip.txt; added samples/**/*.webp to gitignore; README quick-start notes the notebook is Task 16 deliverable
+  rationale: Code review flagged that unconditional torch install (~2 GB, Apple Silicon wheel risk) is user-hostile for the non-CLIP default path; webp is common on modern phones/macOS screenshots
+  action: Remove torch + open_clip_torch from requirements.txt into requirements-clip.txt; add webp glob to gitignore; annotate README quick-start
+  result: Core install trims to ~200 MB; CLIP install is opt-in
+  validation: pytest --collect-only still returns 0 tests; diff inspected
+  status: stable

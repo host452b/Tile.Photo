@@ -6,7 +6,11 @@ Re-compose a target image from your personal photo library. Local-only, delibera
 
 ```bash
 pip install -r requirements.txt
-# (macOS) brew install vips  # for pyvips
+# (macOS) brew install vips  # for pyvips/DeepZoom export
+# Optional, only if you want CLIP semantic matching (~2 GB):
+# pip install -r requirements-clip.txt
+
+# Once Task 16 is done (the notebook):
 jupytext --to ipynb photomosaic.py
 jupyter notebook photomosaic.ipynb
 ```

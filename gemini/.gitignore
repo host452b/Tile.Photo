@@ -9,5 +9,6 @@ __pycache__/
 samples/**/*.jpg
 samples/**/*.jpeg
 samples/**/*.png
+samples/**/*.webp
 !samples/.gitkeep
 output/

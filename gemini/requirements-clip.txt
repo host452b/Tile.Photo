@@ -1,0 +1,4 @@
+# Optional: enables use_clip=True in the notebook config.
+# Install with: pip install -r requirements-clip.txt
+open_clip_torch>=2.24
+torch>=2.2

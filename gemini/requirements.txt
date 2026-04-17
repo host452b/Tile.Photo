@@ -8,6 +8,3 @@ tqdm>=4.66
 matplotlib>=3.8
 pytest>=8.0
 jupyter>=1.0
-# Optional (guarded by flag in config):
-open_clip_torch>=2.24
-torch>=2.2
