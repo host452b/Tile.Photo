@@ -7,6 +7,16 @@
 
 - date: 2026-04-17
   type: feat
+  target: chatgpt/mosaic_core.py
+  change: 实现 lab_mean(rgb) -> float32[3],基于 skimage.color.rgb2lab 对 uint8 RGB 求 LAB 均值
+  rationale: 色差匹配的基础;后续 reinhard_transfer、ciede2000、scan_tile_pool 都依赖它
+  action: 新建 mosaic_core.py 含 TileRecord/MosaicConfig/ReportBundle 三个 dataclass 骨架 + lab_mean
+  result: 纯红图像测试通过,返回值与 sRGB → CIELAB 理论值 ± 0.5 内吻合
+  validation: tests/test_color.py::test_lab_mean_pure_red 绿
+  status: stable
+
+- date: 2026-04-17
+  type: feat
   target: chatgpt/
   change: 初始化 photomosaic toy 项目骨架,产出 requirements.txt / .gitignore / CHANGELOG.md / tests/ 空目录
   rationale: 按已批准的 spec (docs/superpowers/specs/2026-04-17-photomosaic-toy-design.md) 开始实现;MVP 定位为本地 ipynb 玩具,λ/μ/τ 三滑条 + 自嘲式报告 + DeepZoom。
