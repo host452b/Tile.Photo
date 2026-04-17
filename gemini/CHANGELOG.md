@@ -8,6 +8,16 @@
 - date: 2026-04-17
   type: feat
   target: src/matcher.py
+  change: assign_with_clip(..., tile_clip, patch_clip, clip_weight) adds cosine similarity bonus to the penalty rerank
+  rationale: 玩点 A — "blue regions pick real sea photos over blue walls"; weight=0 regression guarantees it never hurts plain mode
+  action: Extends greedy scan with -clip_weight * dot(tile_emb, patch_emb); assumes L2-normalized inputs
+  result: 2/2 new tests pass (tie-break + zero-weight regression)
+  validation: pytest tests/test_matcher.py -v
+  status: stable
+
+- date: 2026-04-17
+  type: feat
+  target: src/matcher.py
   change: assign_with_penalties(topk_idx, topk_dist, lambda_repeat, mu_neighbor, on_cell) — greedy raster-scan with usage + neighbor penalties + per-cell callback
   rationale: lambda solves "one photo dominates" (玩点 B); mu solves "same photo clumps in a region"; on_cell gives the notebook its live-thinking printout (玩点 "能看见算法在思考")
   action: Greedy O(rows*cols*k), score = sqrt(L2 LAB dist) + lambda*log1p(usage) + mu*neighbor_clash

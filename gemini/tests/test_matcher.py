@@ -62,3 +62,31 @@ def test_assign_emits_callback_per_cell():
                           on_cell=lambda r, c, chosen, candidates: events.append((r, c, chosen)))
     assert len(events) == 2
     assert [e[:2] for e in events] == [(0, 0), (0, 1)]
+
+
+def test_clip_rerank_prefers_semantically_similar_when_tie():
+    # Two tiles equally close in color, but tile 1 semantically closer
+    tile_lab = np.array([[50, 0, 0], [50, 0, 0]], dtype=np.float32)
+    tile_clip = np.array([[1.0, 0.0], [0.0, 1.0]], dtype=np.float32)
+    patches_lab = np.array([[[50, 0, 0]]], dtype=np.float32)   # (1,1,3)
+    patch_clip = np.array([[[0.0, 1.0]]], dtype=np.float32)     # (1,1,2) — matches tile 1
+    idx, dist = color_topk(patches_lab, tile_lab, k=2)
+    from src.matcher import assign_with_clip
+    out = assign_with_clip(idx, dist, patches_lab, tile_lab,
+                           tile_clip=tile_clip, patch_clip=patch_clip,
+                           lambda_repeat=0.0, mu_neighbor=0.0, clip_weight=1.0)
+    assert out[0, 0] == 1
+
+
+def test_clip_rerank_noop_when_weight_zero():
+    tile_lab = np.array([[50, 0, 0], [50, 0, 0]], dtype=np.float32)
+    tile_clip = np.array([[1.0, 0.0], [0.0, 1.0]], dtype=np.float32)
+    patches_lab = np.array([[[50, 0, 0]]], dtype=np.float32)
+    patch_clip = np.array([[[0.0, 1.0]]], dtype=np.float32)
+    idx, dist = color_topk(patches_lab, tile_lab, k=2)
+    from src.matcher import assign_with_clip
+    out_zero = assign_with_clip(idx, dist, patches_lab, tile_lab,
+                                tile_clip=tile_clip, patch_clip=patch_clip,
+                                lambda_repeat=0.0, mu_neighbor=0.0, clip_weight=0.0)
+    out_plain = assign_with_penalties(idx, dist, lambda_repeat=0.0, mu_neighbor=0.0)
+    np.testing.assert_array_equal(out_zero, out_plain)
