@@ -8,6 +8,16 @@
 - date: 2026-04-17
   type: feat
   target: chatgpt/mosaic_core.py
+  change: 实现 build_faiss_index / knn_candidates,做 LAB 空间 top-k 候选查询
+  rationale: N < 10k 底图量级,IndexFlatL2 就够用,无需 IVF;有 k > N 时自动降级为 N
+  action: lazy import faiss;把 target 从 (H, W, 3) reshape 成 (H·W, 3) 批量查询
+  result: 100 tile 查询 top-5 确定性且与 argmin L2 一致;4×6 grid 返回 (24, 8)
+  validation: tests/test_matching.py::test_build_faiss_index_*, test_knn_candidates_* 绿
+  status: stable
+
+- date: 2026-04-17
+  type: feat
+  target: chatgpt/mosaic_core.py
   change: 实现 render_mosaic(assignment, tile_records, tile_px, τ, target_lab) -> PIL.Image
   rationale: 把 assignment 表变成可视化像素矩阵;τ>0 时每 tile 贴前做 reinhard_transfer
   action: 双层 for 循环按格贴图,尺寸不匹配时 resize;短路 τ=0 省去 LAB 往返开销

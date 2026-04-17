@@ -128,3 +128,23 @@ def render_mosaic(
             y0, x0 = r * tile_px, c * tile_px
             canvas[y0:y0 + tile_px, x0:x0 + tile_px] = thumb
     return Image.fromarray(canvas)
+
+
+# ---------- matching ----------
+
+def build_faiss_index(tile_labs: np.ndarray):
+    """Build a flat L2 faiss index over an N×3 LAB matrix."""
+    import faiss  # lazy import to avoid paying at module load
+    arr = np.ascontiguousarray(tile_labs, dtype=np.float32)
+    index = faiss.IndexFlatL2(arr.shape[1])
+    index.add(arr)
+    return index
+
+
+def knn_candidates(target_lab: np.ndarray, faiss_index, k: int = 32) -> np.ndarray:
+    """Return top-k tile indices per target cell: int64[H*W, k]."""
+    h, w, _ = target_lab.shape
+    query = np.ascontiguousarray(target_lab.reshape(h * w, 3), dtype=np.float32)
+    effective_k = min(k, faiss_index.ntotal)
+    _dists, idxs = faiss_index.search(query, effective_k)
+    return idxs.astype(np.int64)
