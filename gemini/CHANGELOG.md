@@ -6,6 +6,16 @@
 ## 活跃条目
 
 - date: 2026-04-17
+  type: feat
+  target: photomosaic.py, photomosaic.ipynb
+  change: 8-cell jupytext notebook wiring all modules, with live narration hook in Cell 5 and DeepZoom export in Cell 8
+  rationale: Cell 2 is the user's entire UI surface (per "toy" positioning); narrate() shows the algorithm thinking (玩点 "能看见算法在思考")
+  action: .py authored with # %% percent-format cells, converted to .ipynb via jupytext --to ipynb
+  result: py_compile passes; ipynb generated and parses as JSON
+  validation: python -m py_compile photomosaic.py && python -c "import json, pathlib; json.loads(pathlib.Path('photomosaic.ipynb').read_text())"
+  status: stable
+
+- date: 2026-04-17
   type: fix
   target: src/deepzoom.py, tests/test_deepzoom.py
   change: Corrected DZI Width/Height to PIL-native (width, height) ordering; test used Image.new(size=(300,200)) so assertions match PIL convention
