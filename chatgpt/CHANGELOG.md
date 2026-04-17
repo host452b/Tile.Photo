@@ -7,6 +7,16 @@
 
 - date: 2026-04-17
   type: feat
+  target: chatgpt/
+  change: 端到端冒烟通过——pytest 全绿 (20/20),nbconvert headless 跑完 mosaic.ipynb 产出 mosaic.png + report.txt + deepzoom/index.html
+  rationale: 验证 MVP 验收标准;零配置首跑 + 缓存二跑两条路径都覆盖
+  action: 清空 .cache/out/my_tiles/target.jpg 后 nbconvert --execute;再二次跑验证缓存命中
+  result: 首跑生成 200 张 seed tile,目标用渐变兜底;out/ 下四件产物齐全;二跑更快且产物再生
+  validation: pytest tests/ 全绿;ls out/mosaic.png out/report.txt out/deepzoom/index.html out/deepzoom/mosaic.dzi 均存在且非零字节
+  status: stable
+
+- date: 2026-04-17
+  type: feat
   target: chatgpt/_build_notebook.py + chatgpt/mosaic.ipynb
   change: 实现 _build_notebook.py(nbformat 拼 8 个 cell)+ 生成产物 mosaic.ipynb
   rationale: 直接手写 .ipynb JSON 不可维护;改 cell 内容只改 _build_notebook.py 然后重跑
