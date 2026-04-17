@@ -8,6 +8,16 @@
 - date: 2026-04-17
   type: feat
   target: src/tile_pool.py
+  change: add_clip_embeddings(idx, model_name, pretrained) returns new TileIndex with L2-normalized CLIP image embeddings
+  rationale: Enables "semantic" matching (玩点 A) — blue regions can prefer actual sea photos over blue walls
+  action: open_clip.create_model_and_transforms → encode_image batched → L2 normalize → cpu().numpy(); imports are function-local so module stays importable without CLIP
+  result: Test passes if open_clip installed, else skipped (currently skipped on this machine by design)
+  validation: pytest tests/test_tile_pool.py -v
+  status: stable
+
+- date: 2026-04-17
+  type: feat
+  target: src/tile_pool.py
   change: TileIndex dataclass + build_tile_index (LAB mean via skimage.rgb2lab on 64x64 thumbnail) + load_or_build_index with pickle cache keyed by sha1(abspath::min_side)
   rationale: LAB mean is perceptually better than RGB for color distance; pickle cache makes re-runs instant (user will tweak sliders many times)
   action: 64x64 LANCZOS thumbnail → rgb2lab → mean over pixels; cache file name is stable hash of tile_dir abspath

@@ -52,3 +52,30 @@ def test_load_or_build_uses_cache_on_second_call(tmp_path: Path):
     idx2 = load_or_build_index(str(tmp_path), cache_dir=str(cache))
     assert idx1.paths == idx2.paths
     np.testing.assert_array_equal(idx1.lab_mean, idx2.lab_mean)
+
+
+import importlib
+
+
+def _has_clip() -> bool:
+    try:
+        importlib.import_module("open_clip")
+        importlib.import_module("torch")
+        return True
+    except ImportError:
+        return False
+
+
+@pytest.mark.skipif(not _has_clip(), reason="open_clip/torch not installed")
+def test_add_clip_embeddings_shapes(tmp_path: Path):
+    from src.tile_pool import add_clip_embeddings
+    _make_img(tmp_path / "a.jpg", (100, 100, 100))
+    _make_img(tmp_path / "b.jpg", (200, 50, 50))
+    idx = build_tile_index(str(tmp_path))
+    idx2 = add_clip_embeddings(idx, model_name="ViT-B-32", pretrained="openai")
+    assert idx2.clip_emb is not None
+    assert idx2.clip_emb.shape[0] == 2
+    assert idx2.clip_emb.shape[1] > 0
+    # L2-normalized
+    norms = np.linalg.norm(idx2.clip_emb, axis=1)
+    np.testing.assert_allclose(norms, 1.0, atol=1e-3)

@@ -71,3 +71,24 @@ def load_or_build_index(tile_dir: str, cache_dir: str = ".cache", min_side: int 
     with cache_path.open("wb") as f:
         pickle.dump(idx, f)
     return idx
+
+
+def add_clip_embeddings(idx: TileIndex, model_name: str = "ViT-B-32",
+                        pretrained: str = "openai", batch_size: int = 32) -> TileIndex:
+    """Attach L2-normalized CLIP image embeddings. Requires open_clip + torch."""
+    import open_clip
+    import torch
+    device = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
+    model, _, preprocess = open_clip.create_model_and_transforms(model_name, pretrained=pretrained)
+    model = model.to(device).eval()
+
+    embs: List[np.ndarray] = []
+    with torch.no_grad():
+        for start in range(0, len(idx.paths), batch_size):
+            batch_paths = idx.paths[start:start + batch_size]
+            batch = torch.stack([preprocess(Image.open(p).convert("RGB")) for p in batch_paths]).to(device)
+            feat = model.encode_image(batch)
+            feat = feat / feat.norm(dim=-1, keepdim=True)
+            embs.append(feat.cpu().numpy().astype(np.float32))
+    clip_emb = np.concatenate(embs, axis=0)
+    return TileIndex(paths=idx.paths, lab_mean=idx.lab_mean, clip_emb=clip_emb)
