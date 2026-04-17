@@ -1,0 +1,9 @@
+.cache/
+output/
+pool/
+target.jpg
+target.png
+target.jpeg
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
