@@ -8,6 +8,16 @@
 - date: 2026-04-17
   type: feat
   target: src/renderer.py
+  change: render_mosaic(assignment, tile_paths, cell_rgb, tile_px, tau) — paste center-cropped tiles with optional Reinhard tone transfer toward target cell mean; returns (Image, usage Counter)
+  rationale: Keeps "load tile once" caching inside the renderer; usage dict feeds the self-mocking report
+  action: Center-crop to square, LANCZOS resize to tile_px, tone-transfer using target cell's mean RGB if tau>0
+  result: 2/2 new tests pass (shape + usage + tone-transfer direction)
+  validation: pytest tests/test_renderer.py -v
+  status: stable
+
+- date: 2026-04-17
+  type: feat
+  target: src/renderer.py
   change: reinhard_tone_transfer(src, target, tau) — LAB-space per-channel mean/std shift, interpolated by tau
   rationale: 玩点 C — default commercial tools run tau≈0.9 (over-tinted); we expose tau so 0.4–0.6 sweet spot is reachable
   action: rgb2lab on both → shift src stats toward target stats → interpolate by tau → lab2rgb back
