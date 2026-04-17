@@ -8,6 +8,16 @@
 - date: 2026-04-17
   type: feat
   target: chatgpt/mosaic_core.py
+  change: 实现 reinhard_transfer(tile_rgb, target_lab_mean, τ) -> rgb,按 τ 线性混合 LAB 均值迁移后的 RGB 与原图
+  rationale: τ 是"有质感层"的核心滑条;原 Reinhard 含 std 缩放,此处只做 mean-shift 够用且稳定
+  action: τ=0 短路返回原 tile;τ=1 返回纯迁移结果;中间做 (1-τ)*orig + τ*transferred 线性混
+  result: τ=0 byte-exact;τ=1 后新均值与目标误差 < 4 LAB 单位(sRGB 裁剪导致的正常漂移)
+  validation: tests/test_color.py::test_reinhard_tau_{zero,one}_* 绿
+  status: stable
+
+- date: 2026-04-17
+  type: feat
+  target: chatgpt/mosaic_core.py
   change: 实现 ciede2000(lab_a, lab_b) -> float,包装 skimage.color.deltaE_ciede2000 返回标量
   rationale: ΔE_CIEDE2000 是 rerank 里的主色差项;纯 LAB 欧氏会在深色/饱和色区域失真
   action: 新增函数,内部 reshape 到 (1,1,3) 后 squeeze 出标量

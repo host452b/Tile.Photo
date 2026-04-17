@@ -63,3 +63,22 @@ def ciede2000(lab_a: np.ndarray, lab_b: np.ndarray) -> float:
     a = np.asarray(lab_a, dtype=np.float64).reshape(1, 1, 3)
     b = np.asarray(lab_b, dtype=np.float64).reshape(1, 1, 3)
     return float(deltaE_ciede2000(a, b).squeeze())
+
+
+def reinhard_transfer(
+    tile_rgb: np.ndarray,
+    target_lab_mean: np.ndarray,
+    tau: float,
+) -> np.ndarray:
+    """Shift tile's LAB mean onto target_lab_mean, then mix by τ∈[0,1]."""
+    if tau == 0.0:
+        return tile_rgb
+    tile_lab = rgb2lab(tile_rgb.astype(np.float64) / 255.0)
+    tile_lab_mean = tile_lab.reshape(-1, 3).mean(axis=0)
+    offset = np.asarray(target_lab_mean, dtype=np.float64) - tile_lab_mean
+    transferred_lab = tile_lab + offset
+    transferred_rgb = np.clip(lab2rgb(transferred_lab) * 255.0, 0, 255).astype(np.uint8)
+    if tau == 1.0:
+        return transferred_rgb
+    blend = tile_rgb.astype(np.float32) * (1.0 - tau) + transferred_rgb.astype(np.float32) * tau
+    return np.clip(blend, 0, 255).astype(np.uint8)
