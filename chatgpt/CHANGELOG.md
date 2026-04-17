@@ -14,3 +14,16 @@
   result: 骨架就绪,进入 TDD 模块实现阶段。
   validation: 文件存在;pip install -r requirements.txt 能装;git status 干净。
   status: stable
+
+- date: 2026-04-17
+  type: try-failed
+  target: chatgpt/requirements.txt + plan Task 12
+  change: 从 requirements.txt 移除 deepzoom>=0.2,改为在 Task 12 自写 DeepZoom 编码器
+  rationale: plan 设计时假定 PyPI 上存在 deepzoom 包 (参照 openzoom/deepzoom.py),实际 pip 已无此包 (也无 deep-zoom-tools / pydeepzoom),只有 git+ 安装可用但那会违反"零额外工具"的玩具定位
+  action: 删 requirements.txt 第 10 行 deepzoom>=0.2;更新 plan §Task 12 步骤,改为纯 PIL + 手写 DZI XML 的 export_deepzoom 实现
+  result: 剩 11 个依赖全部 pip 可装;Task 12 将用 ~80 行自写 DeepZoom 金字塔 + OpenSeadragon HTML
+  validation: pip install --dry-run 对每个剩余依赖都 ok;DZI 格式规范见 https://learn.microsoft.com/en-us/previous-versions/windows/silverlight/dotnet-windows-silverlight/cc645077(v=vs.95)
+  problem_context: Task 1 的实现 agent 跑 pip install 时发现 deepzoom>=0.2 装不上,flagged 为 DONE_WITH_CONCERNS
+  workaround_reason: git+url 安装要求用户机器装 git (本身没问题,但增加了"一条 pip install 解决所有依赖"的摩擦);DZI 格式简单,80 行自写也清晰
+  next_action: Task 12 执行时用纯 PIL + XML 生成 .dzi + _files/ 金字塔 + OpenSeadragon CDN 的 HTML
+  status: stable

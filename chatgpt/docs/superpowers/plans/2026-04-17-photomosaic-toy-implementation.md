@@ -79,12 +79,11 @@ tqdm>=4.66
 jupyter>=1.0
 ipywidgets>=8.1
 matplotlib>=3.8
-deepzoom>=0.2
 pytest>=7.4
 nbformat>=5.9
 ```
 
-Path: `chatgpt/requirements.txt`.
+Path: `chatgpt/requirements.txt`. (11 deps; no `deepzoom` — we write the DZI encoder ourselves in Task 12, see CHANGELOG try-failed entry for rationale.)
 
 - [ ] **Step 2: Create `.gitignore`**
 
@@ -1442,12 +1441,14 @@ EOF
 
 ---
 
-## Task 12: DeepZoom — `export_deepzoom`
+## Task 12: DeepZoom — `export_deepzoom` (self-contained encoder)
 
 **Files:**
 - Modify: `chatgpt/mosaic_core.py`
 
-No test — this is a thin IO wrapper covered by the end-to-end smoke in Task 14. Spec §8 explicitly says "不测 notebook / UI / IO".
+**Context (plan correction):** The original plan relied on `deepzoom>=0.2` from PyPI, but that package is no longer published. See CHANGELOG `try-failed` entry 2026-04-17. We write a minimal DZI encoder ourselves using only PIL (no external dep). Format reference: DZI = `{name}.dzi` XML manifest + `{name}_files/<level>/<col>_<row>.jpg` tile pyramid.
+
+No unit test — thin IO, covered by end-to-end smoke (Task 14).
 
 - [ ] **Step 1: Implement `export_deepzoom`**
 
@@ -1455,6 +1456,13 @@ Append to `mosaic_core.py`:
 
 ```python
 # ---------- deepzoom ----------
+
+_DZI_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<Image xmlns="http://schemas.microsoft.com/deepzoom/2008"
+       Format="jpg" Overlap="{overlap}" TileSize="{tile_size}">
+  <Size Width="{width}" Height="{height}"/>
+</Image>
+"""
 
 _OPENSEADRAGON_HTML = """<!DOCTYPE html>
 <html>
@@ -1481,28 +1489,55 @@ _OPENSEADRAGON_HTML = """<!DOCTYPE html>
 """
 
 
-def export_deepzoom(png_path: Path, out_dir: Path) -> Path:
-    """Slice a PNG into a DeepZoom pyramid and drop an index.html next to it.
+def export_deepzoom(
+    png_path: Path,
+    out_dir: Path,
+    tile_size: int = 256,
+    overlap: int = 1,
+    jpeg_quality: int = 85,
+) -> Path:
+    """Slice a PNG into a DeepZoom (DZI) pyramid plus an OpenSeadragon index.html.
 
-    Returns the path to the generated index.html.
+    Writes: out_dir/mosaic.dzi, out_dir/mosaic_files/<level>/<col>_<row>.jpg,
+            out_dir/index.html. Returns the index.html path.
+
+    Pure PIL implementation — no external deepzoom library needed.
     """
-    import deepzoom
-
     png_path = Path(png_path)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    base = Image.open(png_path).convert("RGB")
+    width, height = base.size
+    max_dim = max(width, height)
+    max_level = math.ceil(math.log2(max_dim)) if max_dim > 1 else 0
+
     dzi_name = "mosaic.dzi"
-    dzi_path = out_dir / dzi_name
+    files_dir = out_dir / "mosaic_files"
+    files_dir.mkdir(parents=True, exist_ok=True)
 
-    creator = deepzoom.ImageCreator(
-        tile_size=256,
-        tile_overlap=1,
-        tile_format="jpg",
-        image_quality=0.85,
-        resize_filter="antialias",
+    for level in range(max_level + 1):
+        scale = 2 ** (max_level - level)
+        lw = max(1, math.ceil(width / scale))
+        lh = max(1, math.ceil(height / scale))
+        level_img = base.resize((lw, lh), Image.LANCZOS)
+        level_dir = files_dir / str(level)
+        level_dir.mkdir(parents=True, exist_ok=True)
+        cols = math.ceil(lw / tile_size)
+        rows = math.ceil(lh / tile_size)
+        for col in range(cols):
+            for row in range(rows):
+                x0 = max(0, col * tile_size - overlap)
+                y0 = max(0, row * tile_size - overlap)
+                x1 = min(lw, (col + 1) * tile_size + overlap)
+                y1 = min(lh, (row + 1) * tile_size + overlap)
+                tile = level_img.crop((x0, y0, x1, y1))
+                tile.save(level_dir / f"{col}_{row}.jpg", "JPEG", quality=jpeg_quality)
+
+    (out_dir / dzi_name).write_text(
+        _DZI_XML.format(overlap=overlap, tile_size=tile_size, width=width, height=height),
+        encoding="utf-8",
     )
-    creator.create(str(png_path), str(dzi_path))
-
     index_path = out_dir / "index.html"
     index_path.write_text(_OPENSEADRAGON_HTML.format(dzi_name=dzi_name), encoding="utf-8")
     return index_path
@@ -1517,7 +1552,26 @@ python -c "from mosaic_core import export_deepzoom; print('ok')"
 
 Expected: prints `ok`.
 
-- [ ] **Step 3: Commit + CHANGELOG**
+- [ ] **Step 3: Smoke-verify encoder produces valid output on a throwaway PNG**
+
+Run from `chatgpt/`:
+```bash
+python -c "
+from pathlib import Path
+from PIL import Image
+from mosaic_core import export_deepzoom
+Image.new('RGB', (512, 300), (200, 50, 50)).save('/tmp/_dztest.png')
+idx = export_deepzoom(Path('/tmp/_dztest.png'), Path('/tmp/_dztest_out'))
+print('index:', idx)
+print('dzi exists:', (Path('/tmp/_dztest_out') / 'mosaic.dzi').exists())
+print('level 0 tile exists:', (Path('/tmp/_dztest_out/mosaic_files/0/0_0.jpg')).exists())
+"
+rm -rf /tmp/_dztest.png /tmp/_dztest_out
+```
+
+Expected: prints three lines; all existence checks True.
+
+- [ ] **Step 4: Commit + CHANGELOG**
 
 Append:
 
@@ -1525,11 +1579,11 @@ Append:
 - date: 2026-04-17
   type: feat
   target: chatgpt/mosaic_core.py
-  change: 实现 export_deepzoom(png_path, out_dir) -> index.html 路径,用 deepzoom.ImageCreator 切金字塔 + 写 OpenSeadragon HTML
-  rationale: plan.md 明确说 DeepZoom 是整个项目 ROI 最高的功能;浏览器里无限缩放到单张底图可辨
-  action: tile_size=256 overlap=1 JPG 85;HTML 通过 jsdelivr CDN 加载 OpenSeadragon 4,无离线 vendor 文件
-  result: import 不报错;实际输出留给 Task 14 端到端冒烟
-  validation: python -c 'from mosaic_core import export_deepzoom' 不抛
+  change: 实现 export_deepzoom(png_path, out_dir) -> index.html;纯 PIL 自写 DZI 金字塔 + OpenSeadragon CDN HTML
+  rationale: plan 原方案依赖的 deepzoom PyPI 包已下架 (见 2026-04-17 try-failed 条目);DZI 格式简单,自写不增加运行时依赖
+  action: log2(max_dim) 层;每层 resize + 按 tile_size=256 切格 (1 px overlap);按 DZI XML 规范写 manifest;OpenSeadragon 通过 jsdelivr CDN 加载
+  result: 512×300 测试图能正确生成 mosaic.dzi + mosaic_files/0/0_0.jpg;import 不报错
+  validation: python -c 'from mosaic_core import export_deepzoom' 不抛;/tmp 冒烟脚本三项存在检查 True
   status: stable
 ```
 
@@ -1537,11 +1591,11 @@ Commit:
 ```bash
 git add chatgpt/mosaic_core.py chatgpt/CHANGELOG.md
 git commit -m "$(cat <<'EOF'
-feat: add export_deepzoom for OpenSeadragon viewer
+feat: add self-contained export_deepzoom
 
-Thin wrapper over deepzoom.ImageCreator plus an OpenSeadragon-
-from-CDN index.html. Untested at unit level per spec; covered by
-end-to-end smoke in the notebook exec step.
+Writes DZI XML + tile pyramid directly via PIL, no external
+deepzoom package needed (the one the original plan referenced
+was pulled from PyPI). OpenSeadragon loads from jsdelivr CDN.
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
 EOF
