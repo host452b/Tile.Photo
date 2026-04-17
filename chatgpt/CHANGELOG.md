@@ -8,6 +8,16 @@
 - date: 2026-04-17
   type: feat
   target: chatgpt/mosaic_core.py
+  change: 实现 scan_tile_pool(dir, cache_path) -> (records, bad_files),递归扫图建 LAB+64×64 thumb 并 pickle 缓存
+  rationale: 真实相册几千张照片二次跑时不用重读像素;缓存版本号不匹配直接重算
+  action: rglob JPG/PNG/JPEG,PIL 读取后 resize 64×64;损坏文件进 bad_files 不中断;版本化 pickle
+  result: 5 张清图全记录、坏 JPG 进 bad_files 不崩、缓存命中后内容字节级一致
+  validation: tests/test_transfer.py::test_scan_tile_pool_* (3 个) 绿
+  status: stable
+
+- date: 2026-04-17
+  type: feat
+  target: chatgpt/mosaic_core.py
   change: 实现 ensure_seed_tiles(dir, n=200),空目录自动生成 64×64 HSV 色块 JPG
   rationale: 零配置跑通;Cell 3 即使底图目录空也能继续,不崩
   action: 固定 random.Random(0) 保证可复现;已有内容时 no-op,不覆盖用户真实照片

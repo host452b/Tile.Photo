@@ -75,3 +75,42 @@ def test_ensure_seed_tiles_noop_when_nonempty(tmp_path):
     (target_dir / "user.jpg").write_bytes(b"fake")
     ensure_seed_tiles(target_dir, n=5)
     assert len(list(target_dir.glob("*"))) == 1
+
+
+def test_scan_tile_pool_happy_path(tmp_path):
+    """Scan returns TileRecord list and empty bad_files on clean JPGs."""
+    from mosaic_core import scan_tile_pool, ensure_seed_tiles
+    ensure_seed_tiles(tmp_path / "tiles", n=5)
+    cache = tmp_path / "cache.pkl"
+    tiles, bad = scan_tile_pool(tmp_path / "tiles", cache)
+    assert len(tiles) == 5
+    assert bad == []
+    for t in tiles:
+        assert t.lab_mean.shape == (3,)
+        assert t.rgb_thumb.shape == (64, 64, 3)
+
+
+def test_scan_tile_pool_skips_corrupt_files(tmp_path):
+    """Corrupt JPG goes into bad_files and does not crash the scan."""
+    from mosaic_core import scan_tile_pool, ensure_seed_tiles
+    d = tmp_path / "tiles"
+    ensure_seed_tiles(d, n=3)
+    (d / "broken.jpg").write_bytes(b"not a real jpeg")
+    cache = tmp_path / "cache.pkl"
+    tiles, bad = scan_tile_pool(d, cache)
+    assert len(tiles) == 3
+    assert len(bad) == 1
+    assert bad[0].name == "broken.jpg"
+
+
+def test_scan_tile_pool_uses_cache(tmp_path):
+    """Second call with same cache is trivial — cache file exists after first run."""
+    from mosaic_core import scan_tile_pool, ensure_seed_tiles
+    d = tmp_path / "tiles"
+    ensure_seed_tiles(d, n=4)
+    cache = tmp_path / "cache.pkl"
+    tiles1, _ = scan_tile_pool(d, cache)
+    assert cache.exists()
+    tiles2, _ = scan_tile_pool(d, cache)
+    assert len(tiles1) == len(tiles2)
+    assert (tiles1[0].lab_mean == tiles2[0].lab_mean).all()

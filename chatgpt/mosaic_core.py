@@ -213,3 +213,56 @@ def _hsv_to_rgb(h: float, s: float, v: float) -> tuple[float, float, float]:
     """Pure-stdlib HSV→RGB in [0,1]."""
     import colorsys
     return colorsys.hsv_to_rgb(h, s, v)
+
+
+TILE_CACHE_VERSION = 1
+_TILE_EXTS = {".jpg", ".jpeg", ".png"}
+
+
+def scan_tile_pool(
+    tile_dir: Path,
+    cache_path: Path,
+) -> tuple[list[TileRecord], list[Path]]:
+    """Recursively scan tile_dir, compute LAB means + 64×64 thumbs, cache to pickle.
+
+    Returns: (tile_records, bad_files).
+    """
+    tile_dir = Path(tile_dir)
+    cache_path = Path(cache_path)
+    paths = sorted(
+        p for p in tile_dir.rglob("*")
+        if p.is_file() and p.suffix.lower() in _TILE_EXTS
+    )
+
+    cached: dict[Path, TileRecord] = {}
+    if cache_path.exists():
+        try:
+            with open(cache_path, "rb") as fh:
+                payload = pickle.load(fh)
+            if payload.get("version") == TILE_CACHE_VERSION:
+                cached = payload["records"]
+        except Exception:
+            cached = {}
+
+    records: list[TileRecord] = []
+    bad_files: list[Path] = []
+    for p in paths:
+        if p in cached:
+            records.append(cached[p])
+            continue
+        try:
+            with Image.open(p) as img:
+                img = img.convert("RGB").resize((64, 64), Image.BILINEAR)
+                rgb = np.asarray(img, dtype=np.uint8)
+            rec = TileRecord(path=p, lab_mean=lab_mean(rgb), rgb_thumb=rgb)
+            records.append(rec)
+        except Exception:
+            bad_files.append(p)
+
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(cache_path, "wb") as fh:
+        pickle.dump(
+            {"version": TILE_CACHE_VERSION, "records": {r.path: r for r in records}},
+            fh,
+        )
+    return records, bad_files
