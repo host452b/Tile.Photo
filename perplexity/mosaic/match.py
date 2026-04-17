@@ -40,6 +40,7 @@ def solve_assignment(
         raise ValueError("Empty pool")
 
     lab_matrix = np.stack([pool[p]["lab_mean"] for p in tile_paths]).astype(np.float32)
+    path_to_idx = {p: i for i, p in enumerate(tile_paths)}
     index = faiss.IndexFlatL2(3)
     index.add(lab_matrix)
 
@@ -72,7 +73,7 @@ def solve_assignment(
                     nkey = (nr, nc)
                     if nkey not in assignment:
                         continue
-                    n_ti = tile_paths.index(assignment[nkey])
+                    n_ti = path_to_idx[assignment[nkey]]
                     diff = lab_matrix[ti] - lab_matrix[n_ti]
                     neigh_pen += math.exp(-float(np.dot(diff, diff)) / (neighbor_sigma ** 2))
                 cost += mu_neighbor * neigh_pen

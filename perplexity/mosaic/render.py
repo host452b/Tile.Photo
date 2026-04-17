@@ -18,9 +18,7 @@ def render_mosaic(assignment: dict, pool: dict, grid: dict, tile_px: int, tau: f
     """
     rows, cols = grid["shape"]
     target_image = grid["image"]
-    target_h, target_w = target_image.size[1], target_image.size[0]
-    cell_h = target_h // rows
-    cell_w = target_w // cols
+    cell_h, cell_w = grid["cell_size"]
 
     out_h = tile_px * rows
     out_w = tile_px * cols
