@@ -82,3 +82,54 @@ def test_match_all_tiles_picks_nearest_color_when_no_penalty() -> None:
     # Each cell must pick its own tile (identity mapping)
     np.testing.assert_array_equal(assignment[0], np.arange(5))
     assert sum(use_count.values()) == 5
+
+
+def test_reuse_penalty_spreads_usage() -> None:
+    """With 10 identical target cells and λ high, no single tile should dominate."""
+    from mosaic.config import MosaicConfig
+    from mosaic.match import match_all_tiles
+
+    pool = _synthetic_pool()
+    # All 10 cells want the same color (tile 1: warm light)
+    target_lab = pool.lab_means[1]
+    target = np.tile(target_lab, (1, 10, 1)).astype(np.float32)
+
+    cfg_no_pen = MosaicConfig(
+        tile_source_dir=Path("/tmp"), target_image=Path("/tmp"),
+        grid=(10, 1), tile_px=8, candidate_k=5,
+        lambda_reuse=0.0, mu_neighbor=0.0, verbose=False,
+    )
+    _, use_no = match_all_tiles(target, pool, cfg_no_pen)
+    assert use_no.get(1, 0) == 10, f"expected all tile 1 without penalty, got {use_no}"
+
+    # λ must be large enough to overcome color distance to second-closest tile.
+    # In this synthetic pool, tile 1 (warm light) vs tile 0 (gray) in LAB ≈ 33;
+    # λ·log(1+n) at n=1 needs to exceed ~33 to force switch, so λ ≳ 48.
+    cfg_pen = MosaicConfig(
+        tile_source_dir=Path("/tmp"), target_image=Path("/tmp"),
+        grid=(10, 1), tile_px=8, candidate_k=5,
+        lambda_reuse=60.0, mu_neighbor=0.0, verbose=False,
+    )
+    _, use_pen = match_all_tiles(target, pool, cfg_pen)
+    assert max(use_pen.values()) < 10, f"reuse penalty failed: {use_pen}"
+    assert len(use_pen) >= 2, f"penalty should use ≥2 distinct tiles: {use_pen}"
+
+
+def test_neighbor_penalty_differentiates_adjacent() -> None:
+    """With μ high and 2-cell target tied between two tiles, the two cells should differ."""
+    from mosaic.config import MosaicConfig
+    from mosaic.match import match_all_tiles
+
+    pool = _synthetic_pool()
+    # Target: one cell midway between tile 0 (gray) and tile 1 (warm light)
+    mid = (pool.lab_means[0] + pool.lab_means[1]) / 2.0
+    target = np.tile(mid, (1, 2, 1)).astype(np.float32)
+
+    cfg_mu = MosaicConfig(
+        tile_source_dir=Path("/tmp"), target_image=Path("/tmp"),
+        grid=(2, 1), tile_px=8, candidate_k=5,
+        lambda_reuse=0.0, mu_neighbor=50.0, verbose=False,
+    )
+    assign_mu, _ = match_all_tiles(target, pool, cfg_mu)
+    assert assign_mu[0, 0] != assign_mu[0, 1], \
+        f"neighbor penalty failed, both cells picked {assign_mu[0, 0]}"
