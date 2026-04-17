@@ -6,6 +6,16 @@
 ## 活跃条目
 
 - date: 2026-04-17
+  type: test
+  target: tests/test_smoke.py
+  change: End-to-end smoke — synthetic 30-tile pool + gradient target → run matcher → renderer → reporter; assert mosaic shape + usage diversity
+  rationale: Catches wiring regressions between modules that unit tests miss; lets user sanity-check on a throwaway pool before a real run
+  action: tmp_path fixture builds tile pool and target; runs full pipeline end-to-end
+  result: 1/1 test passes; full suite green
+  validation: pytest -v
+  status: stable
+
+- date: 2026-04-17
   type: feat
   target: photomosaic.py, photomosaic.ipynb
   change: 8-cell jupytext notebook wiring all modules, with live narration hook in Cell 5 and DeepZoom export in Cell 8
