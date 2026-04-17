@@ -7,6 +7,16 @@
 
 - date: 2026-04-17
   type: feat
+  target: src/reporter.py
+  change: build_text_report(tile_paths, usage, tags, total_cells) — top-5 offenders, cold photos, tag-weighted composition breakdown
+  rationale: This IS the shareable artifact (朋友圈 one-shot), far more viral than the mosaic itself
+  action: Sort usage desc, enumerate zero-use paths, tag-weight by cell count
+  result: 1/1 test passes; output contains all key stats
+  validation: pytest tests/test_reporter.py -v
+  status: stable
+
+- date: 2026-04-17
+  type: feat
   target: src/renderer.py
   change: render_mosaic(assignment, tile_paths, cell_rgb, tile_px, tau) — paste center-cropped tiles with optional Reinhard tone transfer toward target cell mean; returns (Image, usage Counter)
   rationale: Keeps "load tile once" caching inside the renderer; usage dict feeds the self-mocking report
