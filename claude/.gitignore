@@ -4,5 +4,6 @@ __pycache__/
 .ipynb_checkpoints/
 .pytest_cache/
 output.png
+out_knobs.png
 .DS_Store
 .venv/

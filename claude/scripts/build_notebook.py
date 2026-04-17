@@ -117,8 +117,8 @@ cells.append(nbf.v4.new_markdown_cell(
 ))
 
 cells.append(nbf.v4.new_code_cell(
-    "lambda_slider = widgets.FloatSlider(value=CONFIG['LAMBDA'], min=0, max=50, step=0.5, description='λ (重复)', continuous_update=False)\n"
-    "mu_slider = widgets.FloatSlider(value=CONFIG['MU'], min=0, max=200, step=5, description='μ (邻居)', continuous_update=False)\n"
+    "lambda_slider = widgets.FloatSlider(value=CONFIG['LAMBDA'], min=0, max=200, step=5, description='λ (重复)', continuous_update=False)\n"
+    "mu_slider = widgets.FloatSlider(value=CONFIG['MU'], min=0, max=1000, step=10, description='μ (邻居)', continuous_update=False)\n"
     "tau_slider = widgets.FloatSlider(value=CONFIG['TAU'], min=0, max=1, step=0.05, description='τ (色调)', continuous_update=False)\n"
     "rerun_btn = widgets.Button(description='重跑', button_style='primary')\n"
     "out = widgets.Output()\n"
