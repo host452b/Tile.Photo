@@ -8,6 +8,16 @@
 - date: 2026-04-17
   type: feat
   target: chatgpt/mosaic_core.py
+  change: 实现 ciede2000(lab_a, lab_b) -> float,包装 skimage.color.deltaE_ciede2000 返回标量
+  rationale: ΔE_CIEDE2000 是 rerank 里的主色差项;纯 LAB 欧氏会在深色/饱和色区域失真
+  action: 新增函数,内部 reshape 到 (1,1,3) 后 squeeze 出标量
+  result: 同点 ΔE < 1e-6,红-绿对比 > 10 两条测试均通过
+  validation: tests/test_color.py::test_ciede2000_* 绿
+  status: stable
+
+- date: 2026-04-17
+  type: feat
+  target: chatgpt/mosaic_core.py
   change: 实现 lab_mean(rgb) -> float32[3],基于 skimage.color.rgb2lab 对 uint8 RGB 求 LAB 均值
   rationale: 色差匹配的基础;后续 reinhard_transfer、ciede2000、scan_tile_pool 都依赖它
   action: 新建 mosaic_core.py 含 TileRecord/MosaicConfig/ReportBundle 三个 dataclass 骨架 + lab_mean

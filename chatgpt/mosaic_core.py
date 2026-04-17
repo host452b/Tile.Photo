@@ -56,3 +56,10 @@ def lab_mean(rgb: np.ndarray) -> np.ndarray:
     """Return LAB mean of an H×W×3 uint8 RGB array as float32[3]."""
     lab = rgb2lab(rgb.astype(np.float64) / 255.0)
     return lab.reshape(-1, 3).mean(axis=0).astype(np.float32)
+
+
+def ciede2000(lab_a: np.ndarray, lab_b: np.ndarray) -> float:
+    """Scalar ΔE*_CIEDE2000 between two LAB triples (shape (3,))."""
+    a = np.asarray(lab_a, dtype=np.float64).reshape(1, 1, 3)
+    b = np.asarray(lab_b, dtype=np.float64).reshape(1, 1, 3)
+    return float(deltaE_ciede2000(a, b).squeeze())
