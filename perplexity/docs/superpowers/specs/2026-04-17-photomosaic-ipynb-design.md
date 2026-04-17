@@ -181,8 +181,8 @@ out = (1 − τ) * tile_orig + τ * tile_transferred
 
 ## 8. DeepZoom 导出
 
-- 库：`deepzoom`（pure-Python，pip 安装，不依赖 `libvips` brew 安装）
-- 切金字塔瓦片到 `output/deepzoom_<ts>/`
+- 切片：纯 Pillow 内联实现（~50 行），不依赖第三方库。原 spec 草稿提到的 `deepzoom` PyPI 包经实现期核实不存在，改为内联更契合"pure pip, no brew"约束
+- 输出 `output/deepzoom_<ts>/mosaic.dzi` + `mosaic_files/<level>/<col>_<row>.jpg` 金字塔
 - 生成自包含 `index.html`，内嵌 OpenSeadragon CDN 链接 + 初始化 JS
 - 用户双击打开就是一个能无限放大的 photomosaic
 
@@ -253,7 +253,7 @@ faiss-cpu
 tqdm
 ipywidgets
 matplotlib
-deepzoom              # pure-python DZI 切片
+# DZI 切片用 Pillow 内联实现（~50 行），不引第三方库
 ```
 
 V2 追加 `open_clip_torch` + `torch`（MVP 不安装）。

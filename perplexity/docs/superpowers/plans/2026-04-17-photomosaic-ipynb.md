@@ -31,11 +31,12 @@ faiss-cpu>=1.8
 tqdm>=4.66
 ipywidgets>=8.1
 matplotlib>=3.8
-deepzoom>=0.5
 pytest>=8.0
 jupyter>=1.0
 notebook>=7.0
 ```
+
+> 注意: DeepZoom 切片在 Task 7 里用 Pillow 内联实现（~50 行），不引外部库。原 spec 里提到的 `deepzoom` PyPI 包经核实不存在，改为内联是更合适的玩具项目做法（也契合"pure pip, no brew"的约束）。
 
 - [ ] **Step 2: 建 package 空壳**
 
@@ -1134,6 +1135,13 @@ def test_deepzoom_produces_html_and_dzi(tmp_path):
     assert "openseadragon" in html.lower()
     assert result["dzi"].name in html
 
+    files_dir = result["dzi"].parent / (result["dzi"].stem + "_files")
+    assert files_dir.exists()
+    tiles = list(files_dir.rglob("*.jpg"))
+    assert len(tiles) > 0, "no DZI tiles written"
+    dzi_xml = result["dzi"].read_text()
+    assert "TileSize" in dzi_xml and 'Width="512"' in dzi_xml
+
 
 def test_deepzoom_overwrites_existing(tmp_path):
     img = Image.fromarray(np.random.RandomState(0).randint(0, 255, (512, 512, 3), dtype=np.uint8))
@@ -1156,13 +1164,14 @@ Expected: 2 tests error with `ImportError`
 
 Create `perplexity/mosaic/zoom.py`:
 ```python
-"""DeepZoom 金字塔切片 + 自包含 OpenSeadragon HTML 查看器。"""
+"""DeepZoom 金字塔切片 + 自包含 OpenSeadragon HTML 查看器。纯 Pillow 实现。"""
 from __future__ import annotations
 
+import math
 import shutil
 from pathlib import Path
 
-import deepzoom
+from PIL import Image
 
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html>
@@ -1188,17 +1197,63 @@ OpenSeadragon({{
 </html>
 """
 
+DZI_TEMPLATE = '''<?xml version="1.0" encoding="UTF-8"?>
+<Image xmlns="http://schemas.microsoft.com/deepzoom/2008"
+       Format="{fmt}" Overlap="{overlap}" TileSize="{tile_size}">
+  <Size Width="{w}" Height="{h}"/>
+</Image>'''
 
-def export_deepzoom(png_path: Path, output_dir: Path) -> dict:
+
+def _write_level_tiles(level_img: Image.Image, level_dir: Path, tile_size: int, overlap: int, fmt: str, quality: int) -> None:
+    lw, lh = level_img.size
+    cols = max(1, math.ceil(lw / tile_size))
+    rows = max(1, math.ceil(lh / tile_size))
+    for col in range(cols):
+        for row in range(rows):
+            left = col * tile_size - (overlap if col > 0 else 0)
+            top = row * tile_size - (overlap if row > 0 else 0)
+            right = min(col * tile_size + tile_size + overlap, lw)
+            bottom = min(row * tile_size + tile_size + overlap, lh)
+            tile = level_img.crop((left, top, right, bottom))
+            tile.save(level_dir / f"{col}_{row}.{fmt}", quality=quality)
+
+
+def export_deepzoom(
+    png_path: Path,
+    output_dir: Path,
+    tile_size: int = 254,
+    overlap: int = 1,
+    fmt: str = "jpg",
+    quality: int = 90,
+) -> dict:
     png_path = Path(png_path)
     output_dir = Path(output_dir)
     if output_dir.exists():
         shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True)
 
-    dzi_path = output_dir / "mosaic.dzi"
-    creator = deepzoom.ImageCreator(tile_size=254, tile_overlap=1, tile_format="jpg", image_quality=0.9)
-    creator.create(str(png_path), str(dzi_path))
+    base_name = "mosaic"
+    img = Image.open(png_path).convert("RGB")
+    w, h = img.size
+    max_level = int(math.ceil(math.log2(max(w, h))))
+
+    files_dir = output_dir / f"{base_name}_files"
+    files_dir.mkdir()
+
+    for level in range(max_level + 1):
+        scale = 2 ** (max_level - level)
+        lw = max(1, math.ceil(w / scale))
+        lh = max(1, math.ceil(h / scale))
+        level_img = img.resize((lw, lh), Image.LANCZOS)
+        level_dir = files_dir / str(level)
+        level_dir.mkdir()
+        _write_level_tiles(level_img, level_dir, tile_size, overlap, fmt, quality)
+
+    dzi_path = output_dir / f"{base_name}.dzi"
+    dzi_path.write_text(
+        DZI_TEMPLATE.format(fmt=fmt, overlap=overlap, tile_size=tile_size, w=w, h=h),
+        encoding="utf-8",
+    )
 
     html_path = output_dir / "index.html"
     html_path.write_text(HTML_TEMPLATE.format(dzi_name=dzi_path.name), encoding="utf-8")
