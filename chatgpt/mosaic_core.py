@@ -82,3 +82,20 @@ def reinhard_transfer(
         return transferred_rgb
     blend = tile_rgb.astype(np.float32) * (1.0 - tau) + transferred_rgb.astype(np.float32) * tau
     return np.clip(blend, 0, 255).astype(np.uint8)
+
+
+# ---------- grid / render ----------
+
+def split_target(img: Image.Image, grid_w: int, grid_h: int) -> np.ndarray:
+    """Split img into grid_h × grid_w patches and return each patch's LAB mean.
+
+    Returns: ndarray[grid_h, grid_w, 3] float32.
+    """
+    patch_w = img.width // grid_w
+    patch_h = img.height // grid_h
+    resized = img.resize((grid_w * patch_w, grid_h * patch_h), Image.BILINEAR)
+    rgb = np.asarray(resized, dtype=np.uint8)
+    lab = rgb2lab(rgb.astype(np.float64) / 255.0)
+    # Reshape to (grid_h, patch_h, grid_w, patch_w, 3) then mean over patch_h, patch_w.
+    reshaped = lab.reshape(grid_h, patch_h, grid_w, patch_w, 3)
+    return reshaped.mean(axis=(1, 3)).astype(np.float32)

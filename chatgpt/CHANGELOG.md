@@ -8,6 +8,16 @@
 - date: 2026-04-17
   type: feat
   target: chatgpt/mosaic_core.py
+  change: 实现 split_target(img, grid_w, grid_h) -> float32[H, W, 3],输出每 patch LAB 均值
+  rationale: 匹配阶段需要"每格目标颜色"作为 KNN 查询向量
+  action: resize 到 grid_w*patch_w × grid_h*patch_h 后 reshape+mean 向量化计算,无 Python 循环
+  result: 100×50 图切 10×5 返回正确 shape;灰度图各 cell 的 LAB 一致且 L~54
+  validation: tests/test_transfer.py::test_split_target_* 绿
+  status: stable
+
+- date: 2026-04-17
+  type: feat
+  target: chatgpt/mosaic_core.py
   change: 实现 reinhard_transfer(tile_rgb, target_lab_mean, τ) -> rgb,按 τ 线性混合 LAB 均值迁移后的 RGB 与原图
   rationale: τ 是"有质感层"的核心滑条;原 Reinhard 含 std 缩放,此处只做 mean-shift 够用且稳定
   action: τ=0 短路返回原 tile;τ=1 返回纯迁移结果;中间做 (1-τ)*orig + τ*transferred 线性混
