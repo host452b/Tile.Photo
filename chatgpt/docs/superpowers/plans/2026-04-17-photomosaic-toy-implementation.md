@@ -6,7 +6,7 @@
 
 **Architecture:** Approach II — thin 8-cell `mosaic.ipynb` driving a testable pure-function module `mosaic_core.py`. TDD for every pure function; notebook is exercised via `nbconvert --execute` as smoke test.
 
-**Tech Stack:** Python 3.11+, pillow, numpy, scikit-image (rgb2lab / deltaE_ciede2000), faiss-cpu, tqdm, ipywidgets, matplotlib, deepzoom, pytest, nbformat.
+**Tech Stack:** Python 3.11+, pillow, numpy, scipy, scikit-image (rgb2lab / deltaE_ciede2000), faiss-cpu, tqdm, jupyter, ipywidgets, matplotlib, pytest, nbformat. DeepZoom encoder is hand-rolled on PIL (see Task 12 / CHANGELOG try-failed entry).
 
 **Spec:** `chatgpt/docs/superpowers/specs/2026-04-17-photomosaic-toy-design.md`
 
