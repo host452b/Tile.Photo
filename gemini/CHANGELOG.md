@@ -7,6 +7,16 @@
 
 - date: 2026-04-17
   type: feat
+  target: src/renderer.py
+  change: reinhard_tone_transfer(src, target, tau) — LAB-space per-channel mean/std shift, interpolated by tau
+  rationale: 玩点 C — default commercial tools run tau≈0.9 (over-tinted); we expose tau so 0.4–0.6 sweet spot is reachable
+  action: rgb2lab on both → shift src stats toward target stats → interpolate by tau → lab2rgb back
+  result: 3/3 tests (identity at 0, target-dominant at 1, monotonic interpolation)
+  validation: pytest tests/test_renderer.py -v
+  status: stable
+
+- date: 2026-04-17
+  type: feat
   target: src/matcher.py
   change: assign_with_clip(..., tile_clip, patch_clip, clip_weight) adds cosine similarity bonus to the penalty rerank
   rationale: 玩点 A — "blue regions pick real sea photos over blue walls"; weight=0 regression guarantees it never hurts plain mode
