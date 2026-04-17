@@ -1,0 +1,8 @@
+pillow>=10
+numpy>=1.26
+scikit-image>=0.22
+tqdm>=4.66
+pillow-heif>=0.15
+pytest>=8
+jupyter>=1
+nbformat>=5
