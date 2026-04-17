@@ -131,3 +131,25 @@ def test_build_report_structural_fields(tmp_path):
     import matplotlib
     assert isinstance(bundle.usage_bar_fig, matplotlib.figure.Figure)
     assert isinstance(bundle.cold_wall_fig, matplotlib.figure.Figure)
+
+
+def test_build_report_includes_directory_distribution(tmp_path):
+    """Report text must include a '目录分布' section (spec §5 requirement)."""
+    from mosaic_core import TileRecord, build_report
+    import numpy as np
+    # Two tile dirs: 'folder_A' and 'folder_B'.
+    recs = []
+    for i in range(3):
+        p = tmp_path / "folder_A" / f"t{i}.jpg"
+        recs.append(TileRecord(path=p, lab_mean=np.array([50.0, 0.0, 0.0], dtype=np.float32),
+                               rgb_thumb=np.zeros((64, 64, 3), dtype=np.uint8)))
+    for i in range(2):
+        p = tmp_path / "folder_B" / f"t{i}.jpg"
+        recs.append(TileRecord(path=p, lab_mean=np.array([50.0, 0.0, 0.0], dtype=np.float32),
+                               rgb_thumb=np.zeros((64, 64, 3), dtype=np.uint8)))
+    # 4 cells: 2 from folder_A (idx 0, 1) + 2 from folder_B (idx 3, 4)
+    assignment = np.array([[0, 1], [3, 4]], dtype=np.int64)
+    bundle = build_report(assignment, recs, elapsed_seconds=1.0, bad_files=[])
+    assert "目录分布" in bundle.text
+    assert "folder_A" in bundle.text
+    assert "folder_B" in bundle.text

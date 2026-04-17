@@ -6,6 +6,16 @@
 ## 活跃条目
 
 - date: 2026-04-17
+  type: fix
+  target: chatgpt/mosaic_core.py + chatgpt/tests/
+  change: 补 spec §5 漏项"目录分布百分比";为 rerank 加空候选 ValueError 防护
+  rationale: 终审 (Opus) 发现两个问题——(1) build_report 没输出按 tile 父目录的使用次数百分比,这是 spec §5 明写的报告五件套之一;(2) rerank 在 candidate_idxs=[] 时静默返回 -1,render_mosaic 用 Python 负索引会贴到 tile_records[-1] 造成静默错贴。当前流水线里 knn_candidates 的 effective_k = min(k, ntotal) 夹紧保证不会触发,但做防御性保险。
+  action: build_report 用 Counter 按 rec.path.parent.name 聚合加权使用次数,取 top 10 目录输出百分比;rerank 入口 if len==0 → raise ValueError;补两个单测 (test_rerank_empty_candidates_raises / test_build_report_includes_directory_distribution)
+  result: 20/20 → 22/22 pytest 全绿;报告新增"目录分布"段;rerank 空候选显式抛错
+  validation: pytest tests/ 22 passed;test_build_report_includes_directory_distribution 断言 "目录分布" 和 "folder_A"/"folder_B" 都在 text 里
+  status: stable
+
+- date: 2026-04-17
   type: feat
   target: chatgpt/
   change: 端到端冒烟通过——pytest 全绿 (20/20),nbconvert headless 跑完 mosaic.ipynb 产出 mosaic.png + report.txt + deepzoom/index.html

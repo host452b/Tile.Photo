@@ -108,3 +108,19 @@ def test_rerank_mu_penalizes_similar_neighbor():
         mu_neighbor=100.0,
     )
     assert best_with_clone_neighbor == 1
+
+
+def test_rerank_empty_candidates_raises():
+    """rerank with no candidates must raise, not silently return -1."""
+    from mosaic_core import rerank
+    tile_labs = np.array([[50.0, 0.0, 0.0]], dtype=np.float32)
+    with pytest.raises(ValueError):
+        rerank(
+            candidate_idxs=np.array([], dtype=np.int64),
+            tile_labs=tile_labs,
+            target_lab_patch=np.array([50.0, 0.0, 0.0], dtype=np.float32),
+            usage_counts={},
+            neighbor_tile_idxs=[],
+            lambda_repeat=0.0,
+            mu_neighbor=0.0,
+        )

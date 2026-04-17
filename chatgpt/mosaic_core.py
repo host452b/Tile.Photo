@@ -168,6 +168,8 @@ def rerank(
     neighbor_tile_idxs is the list of already-filled left/up neighbor tile indices
     in scanline order; may be empty or have 1–2 entries.
     """
+    if len(candidate_idxs) == 0:
+        raise ValueError("rerank requires at least one candidate tile index")
     best_idx = -1
     best_score = math.inf
     for raw_idx in candidate_idxs:
@@ -300,6 +302,20 @@ def build_report(
     for idx in cold_idxs[:5]:
         name = tile_records[idx].path.name if tile_records[idx].path else f"<tile {idx}>"
         lines.append(f"  {name}")
+    # Directory distribution — percentage of used tile instances per parent dir.
+    # Weights by usage count so heavy-repeat tiles dominate as one would expect.
+    dir_counter: Counter = Counter()
+    for idx, count in counts.items():
+        rec = tile_records[idx]
+        dir_name = rec.path.parent.name if rec.path else "<synthetic>"
+        dir_counter[dir_name] += count
+    if dir_counter and total_cells > 0:
+        lines.append("")
+        lines.append("目录分布(按被贴次数):")
+        for dir_name, n in dir_counter.most_common(10):
+            pct = n / total_cells * 100
+            lines.append(f"  {dir_name}: {pct:.1f}% ({n} 次)")
+
     if bad_files:
         lines.append("")
         lines.append("坏图列表:")
