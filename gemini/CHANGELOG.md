@@ -6,6 +6,16 @@
 ## 活跃条目
 
 - date: 2026-04-17
+  type: docs
+  target: README.md, samples/README.md
+  change: Final README polish — removed obsolete brew/pyvips step (Task 15 pivoted to pure-Python DZI), added knob-tuning intuition table, tag setup, per-module purposes, smoke-test shortcut
+  rationale: README is the user's only onboarding surface since no GUI; tuning table turns 3 abstract sliders into actionable intuition
+  action: Full rewrite of README.md; add samples/README.md pointer
+  result: README reads end-to-end in under 3 minutes; no stale install instructions
+  validation: Manual read-through + pytest still 31/1 unchanged
+  status: stable
+
+- date: 2026-04-17
   type: test
   target: tests/test_smoke.py
   change: End-to-end smoke — synthetic 30-tile pool + gradient target → run matcher → renderer → reporter; assert mosaic shape + usage diversity
