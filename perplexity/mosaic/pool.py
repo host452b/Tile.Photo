@@ -1,7 +1,6 @@
 """底图池扫描 + LAB 平均色 + pickle 缓存（按 mtime 增量）。"""
 from __future__ import annotations
 
-import os
 import pickle
 from pathlib import Path
 
