@@ -7,6 +7,16 @@
 
 - date: 2026-04-17
   type: feat
+  target: src/matcher.py
+  change: color_topk(patches_lab, tile_lab, k) returns (idx, dist) via faiss IndexFlatL2 in LAB space
+  rationale: Exact nearest-neighbor in LAB is fast enough (tens of thousands of tiles) and perceptually correct; returns top-k so later reranking can consider alternatives
+  action: faiss IndexFlatL2 on (N, 3) LAB means; batch search over flattened patches; cap k to N
+  result: 2/2 tests pass (nearest wins + k capped to N)
+  validation: pytest tests/test_matcher.py -v
+  status: stable
+
+- date: 2026-04-17
+  type: feat
   target: src/target.py
   change: split_into_patches(path, grid, patch_px=2) returns (LAB mean per cell, source RGB per cell)
   rationale: Separates target parsing from matching; LAB mean drives match distance, source RGB drives tone transfer
