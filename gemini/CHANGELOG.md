@@ -7,6 +7,16 @@
 
 - date: 2026-04-17
   type: feat
+  target: src/tile_pool.py
+  change: scan_tile_dir(path, min_side=32) recursively returns valid jpg/png paths, skipping broken/tiny
+  rationale: Tile pool input is user's chaotic photo dump — must survive broken files and thumbnails silently
+  action: Pillow Image.verify + size check; skip UnidentifiedImageError/OSError
+  result: 2/2 tests pass (recursive glob + min-side filter)
+  validation: pytest tests/test_tile_pool.py -v
+  status: stable
+
+- date: 2026-04-17
+  type: feat
   target: repo
   change: Initial scaffolding (requirements, gitignore, module skeletons, plan doc)
   rationale: Kick off photomosaic toy per user spec (local ipynb + fun features + DeepZoom output)
