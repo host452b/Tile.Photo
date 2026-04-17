@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.cache/
+.pytest_cache/
+.ipynb_checkpoints/
+out/
+my_tiles/
+target.jpg
+.DS_Store
