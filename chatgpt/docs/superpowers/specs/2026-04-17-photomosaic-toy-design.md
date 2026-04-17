@@ -84,7 +84,7 @@ Tile.Photo/chatgpt/
 | `split_target` | `(img: PIL.Image, grid_w: int, grid_h: int) -> np.ndarray[H, W, 3]` | 纯 | 切 LAB 空间的 patch 均值 |
 | `build_faiss_index` | `(tile_labs: np.ndarray) -> faiss.Index` | 纯 | L2 平面索引(底图量级 < 10k,不需要 IVF) |
 | `knn_candidates` | `(target_lab: np.ndarray, faiss_index, k: int = 32) -> np.ndarray[H·W, k]` | 纯 | 每个 patch 的 top-k tile index |
-| `rerank` | `(candidate_idxs, tile_labs, target_lab_patch, usage_counts, neighbors, λ, μ) -> int` | 纯 | 在 top-k 里 `score = ΔE_CIEDE2000 + λ·log(1+usage) + μ·neighbor_similarity`,返回最小 score 的 tile idx |
+| `rerank` | `(candidate_idxs, tile_labs, target_lab_patch, usage_counts, neighbor_tile_idxs: list[int], λ, μ) -> int` | 纯 | 在 top-k 里 `score = ΔE_CIEDE2000 + λ·log(1+usage) + μ·max(similarity to each neighbor tile)`,返回最小 score 的 tile idx。`neighbor_tile_idxs` 是当前格左/上两个已填格的 tile index(扫描线顺序,边界格邻居列表可为空/单元素) |
 | `reinhard_transfer` | `(tile_rgb, target_lab_mean, τ) -> rgb` | 纯 | LAB 空间均值迁移后按 τ 混合 |
 | `render_mosaic` | `(assignment, tile_records, tile_px, τ, target_lab) -> PIL.Image` | 纯 | 按 assignment 拼大图,每块可选做色调迁移 |
 | `build_report` | `(assignment, tile_records, elapsed, bad_files) -> ReportBundle` | 纯 | 返回 `(text, usage_bar_fig, cold_wall_fig)` |
@@ -136,8 +136,8 @@ class ReportBundle:
                       knn_candidates  (top-32)
                             │
                             ▼
-                    逐格 rerank 循环
-                    (usage_counts 和 neighbors 逐步累积)
+                    逐格 rerank 循环(扫描线顺序 top-left → bottom-right)
+                    (usage_counts 累积;neighbor = 左邻 + 上邻已填 tile)
                             │
                             ▼
                   assignment: ndarray[H, W] → tile_idx
@@ -214,6 +214,7 @@ scipy>=1.11
 scikit-image>=0.22
 faiss-cpu>=1.7
 tqdm>=4.66
+jupyter>=1.0
 ipywidgets>=8.1
 matplotlib>=3.8
 deepzoom>=0.2
