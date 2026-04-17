@@ -52,3 +52,26 @@ def test_render_mosaic_tau_zero_preserves_tile_bytes():
     out = np.asarray(img)
     # Top-left 16x16 block must equal tile_rgb.
     np.testing.assert_array_equal(out[:16, :16], tile_rgb)
+
+
+def test_ensure_seed_tiles_creates_files(tmp_path):
+    """ensure_seed_tiles on an empty path creates n JPEG files."""
+    from mosaic_core import ensure_seed_tiles
+    target_dir = tmp_path / "seeds"
+    ensure_seed_tiles(target_dir, n=10)
+    jpgs = list(target_dir.glob("*.jpg"))
+    assert len(jpgs) == 10
+    # Each file should be a readable 64×64 image.
+    for p in jpgs:
+        img = Image.open(p)
+        assert img.size == (64, 64)
+
+
+def test_ensure_seed_tiles_noop_when_nonempty(tmp_path):
+    """If the dir already has images, ensure_seed_tiles must not add more."""
+    from mosaic_core import ensure_seed_tiles
+    target_dir = tmp_path / "existing"
+    target_dir.mkdir()
+    (target_dir / "user.jpg").write_bytes(b"fake")
+    ensure_seed_tiles(target_dir, n=5)
+    assert len(list(target_dir.glob("*"))) == 1

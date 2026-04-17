@@ -8,6 +8,16 @@
 - date: 2026-04-17
   type: feat
   target: chatgpt/mosaic_core.py
+  change: 实现 ensure_seed_tiles(dir, n=200),空目录自动生成 64×64 HSV 色块 JPG
+  rationale: 零配置跑通;Cell 3 即使底图目录空也能继续,不崩
+  action: 固定 random.Random(0) 保证可复现;已有内容时 no-op,不覆盖用户真实照片
+  result: 10 张 case 测试 shape 与数量;已有文件 case 验证 no-op
+  validation: tests/test_transfer.py::test_ensure_seed_tiles_* (2 个) 绿
+  status: stable
+
+- date: 2026-04-17
+  type: feat
+  target: chatgpt/mosaic_core.py
   change: 实现 rerank(candidate_idxs, ..., λ, μ) -> tile_idx,结合 ΔE + λ·log(1+usage) + μ·max_neighbor_sim
   rationale: λ 摊开重复使用,μ 避免同色扎堆;比纯最近邻出图干净得多
   action: 在 top-k 候选里逐个算三项和,取最小;neighbor_sim = 1/(1+ΔE) 天然有界

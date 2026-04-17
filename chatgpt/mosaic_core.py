@@ -186,3 +186,30 @@ def rerank(
             best_score = score
             best_idx = idx
     return best_idx
+
+
+# ---------- pool / IO ----------
+
+def ensure_seed_tiles(tile_dir: Path, n: int = 200) -> None:
+    """If tile_dir is missing or empty, synthesize n 64×64 HSV color blocks."""
+    tile_dir = Path(tile_dir)
+    tile_dir.mkdir(parents=True, exist_ok=True)
+    if any(tile_dir.iterdir()):
+        return
+    rng = random.Random(0)
+    for i in range(n):
+        h = rng.random()
+        s = 0.4 + rng.random() * 0.6
+        v = 0.3 + rng.random() * 0.7
+        rgb_float = _hsv_to_rgb(h, s, v)
+        rgb = np.tile(
+            (np.array(rgb_float) * 255).astype(np.uint8),
+            (64, 64, 1),
+        )
+        Image.fromarray(rgb).save(tile_dir / f"seed_{i:04d}.jpg", quality=90)
+
+
+def _hsv_to_rgb(h: float, s: float, v: float) -> tuple[float, float, float]:
+    """Pure-stdlib HSV→RGB in [0,1]."""
+    import colorsys
+    return colorsys.hsv_to_rgb(h, s, v)
