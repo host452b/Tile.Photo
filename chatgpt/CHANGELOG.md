@@ -7,6 +7,16 @@
 
 - date: 2026-04-17
   type: feat
+  target: chatgpt/_build_notebook.py + chatgpt/mosaic.ipynb
+  change: 实现 _build_notebook.py(nbformat 拼 8 个 cell)+ 生成产物 mosaic.ipynb
+  rationale: 直接手写 .ipynb JSON 不可维护;改 cell 内容只改 _build_notebook.py 然后重跑
+  action: Cell 1 安装+导入;Cell 2 widgets+config 双向同步;Cell 3-5 pool/target/match;Cell 6 render;Cell 7 report;Cell 8 deepzoom
+  result: nbformat 读回 8 cells 无报错;实际执行留给 Task 14
+  validation: python -c 'import nbformat; nb = nbformat.read(...); assert len(nb.cells) == 8'
+  status: stable
+
+- date: 2026-04-17
+  type: feat
   target: chatgpt/mosaic_core.py
   change: 实现 export_deepzoom(png_path, out_dir) -> index.html;纯 PIL 自写 DZI 金字塔 + OpenSeadragon CDN HTML
   rationale: plan 原方案依赖的 deepzoom PyPI 包已下架 (见 2026-04-17 try-failed 条目);DZI 格式简单,自写不增加运行时依赖
