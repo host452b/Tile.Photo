@@ -6,3 +6,4 @@ pillow-heif>=0.15
 pytest>=8
 jupyter>=1
 nbformat>=5
+ipywidgets>=8
