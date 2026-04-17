@@ -7,6 +7,16 @@
 
 - date: 2026-04-17
   type: feat
+  target: pyproject.toml
+  change: Add 3-line pytest config pinning pythonpath=["."] and testpaths=["tests"]
+  rationale: Preemptive fix against ambient sys.path collisions — machine has other /src dirs (gitlab-mr-analyzer/src with __init__.py, auto-yes/.../src) that are one same-named module away from hijacking our imports. The earlier conftest.py try-failed entry predicted pyproject.toml pythonpath as the correct escape hatch; Task 8's implementer flagged that with 6+ source modules now, collision is increasingly likely
+  action: Create pyproject.toml with [tool.pytest.ini_options] pythonpath=["."] testpaths=["tests"]
+  result: 14 passed + 1 skipped (unchanged); now robust to future module-name collisions
+  validation: pytest tests/ -v
+  status: stable
+
+- date: 2026-04-17
+  type: feat
   target: src/matcher.py
   change: color_topk(patches_lab, tile_lab, k) returns (idx, dist) via faiss IndexFlatL2 in LAB space
   rationale: Exact nearest-neighbor in LAB is fast enough (tens of thousands of tiles) and perceptually correct; returns top-k so later reranking can consider alternatives
