@@ -1,8 +1,11 @@
 from __future__ import annotations
 from pathlib import Path
-from typing import List
+from typing import Dict, List
 from PIL import Image, UnidentifiedImageError
+import fnmatch
 import hashlib
+import json as _json
+import re
 import pickle
 from dataclasses import dataclass
 import numpy as np
@@ -92,3 +95,48 @@ def add_clip_embeddings(idx: TileIndex, model_name: str = "ViT-B-32",
             embs.append(feat.cpu().numpy().astype(np.float32))
     clip_emb = np.concatenate(embs, axis=0)
     return TileIndex(paths=idx.paths, lab_mean=idx.lab_mean, clip_emb=clip_emb)
+
+
+def _glob_match(path: str, pattern: str) -> bool:
+    """Match *path* against *pattern*, supporting ** for zero-or-more path segments."""
+    if "**" not in pattern:
+        return fnmatch.fnmatch(path, pattern)
+    # Translate glob pattern to regex: **/ → (.+/)? (zero or more dir segments)
+    result = ""
+    i = 0
+    while i < len(pattern):
+        if pattern[i:i+3] == "**/":
+            result += "(.+/)?"
+            i += 3
+        elif pattern[i:i+2] == "**":
+            result += ".*"
+            i += 2
+        elif pattern[i] == "*":
+            result += "[^/]*"
+            i += 1
+        elif pattern[i] == "?":
+            result += "[^/]"
+            i += 1
+        else:
+            result += re.escape(pattern[i])
+            i += 1
+    return bool(re.match("^" + result + "$", path))
+
+
+def load_tags(tile_dir: str, paths: List[str]) -> Dict[str, str]:
+    """Return {abs_path: tag_name}. First matching pattern wins; unmatched → 'untagged'."""
+    tag_file = Path(tile_dir) / "tags.json"
+    if not tag_file.exists():
+        return {p: "untagged" for p in paths}
+    patterns = _json.loads(tag_file.read_text())
+    root = Path(tile_dir).resolve()
+    out: Dict[str, str] = {}
+    for p in paths:
+        rel = str(Path(p).resolve().relative_to(root))
+        match = "untagged"
+        for pat, name in patterns.items():
+            if _glob_match(rel, pat):
+                match = name
+                break
+        out[p] = match
+    return out

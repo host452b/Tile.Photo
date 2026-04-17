@@ -79,3 +79,34 @@ def test_add_clip_embeddings_shapes(tmp_path: Path):
     # L2-normalized
     norms = np.linalg.norm(idx2.clip_emb, axis=1)
     np.testing.assert_allclose(norms, 1.0, atol=1e-3)
+
+
+def test_load_tags_matches_glob_patterns(tmp_path: Path):
+    from src.tile_pool import load_tags
+    _make_img(tmp_path / "2019_Japan" / "a.jpg", (10, 10, 10))
+    _make_img(tmp_path / "2019_Japan" / "sub" / "b.jpg", (20, 20, 20))
+    _make_img(tmp_path / "work" / "c.jpg", (30, 30, 30))
+    _make_img(tmp_path / "random.jpg", (40, 40, 40))
+    import json
+    (tmp_path / "tags.json").write_text(json.dumps({
+        "2019_Japan/**/*": "Japan trip",
+        "work/**/*": "ex-coworkers",
+    }))
+    paths = [
+        str(tmp_path / "2019_Japan" / "a.jpg"),
+        str(tmp_path / "2019_Japan" / "sub" / "b.jpg"),
+        str(tmp_path / "work" / "c.jpg"),
+        str(tmp_path / "random.jpg"),
+    ]
+    tags = load_tags(str(tmp_path), paths)
+    assert tags[paths[0]] == "Japan trip"
+    assert tags[paths[1]] == "Japan trip"
+    assert tags[paths[2]] == "ex-coworkers"
+    assert tags[paths[3]] == "untagged"
+
+
+def test_load_tags_missing_file_returns_all_untagged(tmp_path: Path):
+    from src.tile_pool import load_tags
+    _make_img(tmp_path / "a.jpg", (10, 10, 10))
+    tags = load_tags(str(tmp_path), [str(tmp_path / "a.jpg")])
+    assert tags == {str(tmp_path / "a.jpg"): "untagged"}

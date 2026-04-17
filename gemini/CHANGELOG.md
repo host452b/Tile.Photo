@@ -8,6 +8,16 @@
 - date: 2026-04-17
   type: feat
   target: src/tile_pool.py
+  change: load_tags(tile_dir, paths) reads tags.json (glob-pattern → tag name), defaults to 'untagged'
+  rationale: Powers the "23% from 2019 Japan trip" narrative in final report — emotional payoff for user
+  action: fnmatch on relative path against ordered JSON patterns; first match wins; ** patterns handled via regex translation (_glob_match helper)
+  result: 2/2 new tests pass
+  validation: pytest tests/test_tile_pool.py -v
+  status: stable
+
+- date: 2026-04-17
+  type: feat
+  target: src/tile_pool.py
   change: add_clip_embeddings(idx, model_name, pretrained) returns new TileIndex with L2-normalized CLIP image embeddings
   rationale: Enables "semantic" matching (玩点 A) — blue regions can prefer actual sea photos over blue walls
   action: open_clip.create_model_and_transforms → encode_image batched → L2 normalize → cpu().numpy(); imports are function-local so module stays importable without CLIP
