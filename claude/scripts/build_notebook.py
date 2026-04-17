@@ -11,9 +11,14 @@ nb = nbf.v4.new_notebook()
 cells = []
 
 cells.append(nbf.v4.new_markdown_cell(
-    "# Bead Mosaic — Phase 1\n"
+    "# Bead Mosaic — Phase 2\n"
     "Zero-config demo: run all cells top-to-bottom.\n"
-    "To use your own photos: set `CONFIG['BASE_DIR']` + `CONFIG['TARGET_PATH']` in Cell 2 and flip `DEMO_MODE` to `False`."
+    "To use your own photos: set `CONFIG['BASE_DIR']` + `CONFIG['TARGET_PATH']` in Cell 2 and flip `DEMO_MODE` to `False`.\n"
+    "\n"
+    "**Phase 2 adds three knobs:**\n"
+    "- `LAMBDA` — repetition penalty (0 = no penalty, large = force tile diversity)\n"
+    "- `MU` — neighbor penalty (0 = ignore, large = no adjacent duplicates)\n"
+    "- `TAU` — tone transfer strength [0, 1] (0 = original tile colors, 1 = tiles adopt target patch's LAB mean)\n"
 ))
 
 cells.append(nbf.v4.new_code_cell(
@@ -23,6 +28,7 @@ cells.append(nbf.v4.new_code_cell(
     "sys.path.insert(0, str(Path.cwd()))\n"
     "\n"
     "import numpy as np\n"
+    "import ipywidgets as widgets\n"
     "from PIL import Image, ImageOps\n"
     "from skimage import data\n"
     "from skimage.color import rgb2lab\n"
@@ -32,7 +38,7 @@ cells.append(nbf.v4.new_code_cell(
 ))
 
 cells.append(nbf.v4.new_code_cell(
-    "# --- edit these two for real usage ---\n"
+    "# --- edit these for real usage ---\n"
     "CONFIG = {\n"
     "    'BASE_DIR': Path.cwd() / 'my_photos',\n"
     "    'TARGET_PATH': None,  # None -> use skimage astronaut\n"
@@ -42,6 +48,9 @@ cells.append(nbf.v4.new_code_cell(
     "    'CACHE_DIR': Path.cwd() / '.cache',\n"
     "    'OUTPUT_PATH': Path.cwd() / 'output.png',\n"
     "    'DEMO_MODE': True,\n"
+    "    'LAMBDA': 0.0,  # repetition penalty\n"
+    "    'MU': 0.0,      # neighbor penalty\n"
+    "    'TAU': 0.0,     # tone transfer strength [0, 1]\n"
     "}\n"
     "CONFIG"
 ))
@@ -85,17 +94,51 @@ cells.append(nbf.v4.new_code_cell(
 ))
 
 cells.append(nbf.v4.new_code_cell(
-    "idx = match.match_grid(target_lab_grid, pool.lab)\n"
+    "idx = match.match_grid(\n"
+    "    target_lab_grid, pool.lab,\n"
+    "    lambda_=CONFIG['LAMBDA'], mu=CONFIG['MU'],\n"
+    ")\n"
     "idx.shape"
 ))
 
 cells.append(nbf.v4.new_code_cell(
     "img, usage = render.render_mosaic_with_usage(\n"
-    "    idx, pool, CONFIG['TILE_PX'], CONFIG['OUTPUT_PATH']\n"
+    "    idx, pool, CONFIG['TILE_PX'], CONFIG['OUTPUT_PATH'],\n"
+    "    target_rgb=target_rgb, tone_strength=CONFIG['TAU'],\n"
     ")\n"
     "display(img)\n"
     "print(f\"\\noutput written to {CONFIG['OUTPUT_PATH']}\")\n"
     "print(f\"tiles used: {len(usage)} distinct / {sum(usage.values())} total placements\")"
+))
+
+cells.append(nbf.v4.new_markdown_cell(
+    "## 交互滑条\n"
+    "拖动滑条不会自动重跑——点 **重跑** 按钮触发一次 match+render。"
+))
+
+cells.append(nbf.v4.new_code_cell(
+    "lambda_slider = widgets.FloatSlider(value=CONFIG['LAMBDA'], min=0, max=50, step=0.5, description='λ (重复)', continuous_update=False)\n"
+    "mu_slider = widgets.FloatSlider(value=CONFIG['MU'], min=0, max=200, step=5, description='μ (邻居)', continuous_update=False)\n"
+    "tau_slider = widgets.FloatSlider(value=CONFIG['TAU'], min=0, max=1, step=0.05, description='τ (色调)', continuous_update=False)\n"
+    "rerun_btn = widgets.Button(description='重跑', button_style='primary')\n"
+    "out = widgets.Output()\n"
+    "\n"
+    "def _rerun(_):\n"
+    "    with out:\n"
+    "        out.clear_output()\n"
+    "        idx = match.match_grid(\n"
+    "            target_lab_grid, pool.lab,\n"
+    "            lambda_=lambda_slider.value, mu=mu_slider.value,\n"
+    "        )\n"
+    "        img, usage = render.render_mosaic_with_usage(\n"
+    "            idx, pool, CONFIG['TILE_PX'], CONFIG['OUTPUT_PATH'],\n"
+    "            target_rgb=target_rgb, tone_strength=tau_slider.value,\n"
+    "        )\n"
+    "        display(img)\n"
+    "        print(f\"tiles used: {len(usage)} distinct / {sum(usage.values())} total\")\n"
+    "\n"
+    "rerun_btn.on_click(_rerun)\n"
+    "display(widgets.VBox([lambda_slider, mu_slider, tau_slider, rerun_btn, out]))"
 ))
 
 nb.cells = cells
