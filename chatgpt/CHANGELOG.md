@@ -8,6 +8,16 @@
 - date: 2026-04-17
   type: feat
   target: chatgpt/mosaic_core.py
+  change: 实现 export_deepzoom(png_path, out_dir) -> index.html;纯 PIL 自写 DZI 金字塔 + OpenSeadragon CDN HTML
+  rationale: plan 原方案依赖的 deepzoom PyPI 包已下架 (见 2026-04-17 try-failed 条目);DZI 格式简单,自写不增加运行时依赖
+  action: log2(max_dim) 层;每层 resize + 按 tile_size=256 切格 (1 px overlap);按 DZI XML 规范写 manifest;OpenSeadragon 通过 jsdelivr CDN 加载
+  result: 512×300 测试图能正确生成 mosaic.dzi + mosaic_files/0/0_0.jpg;import 不报错
+  validation: python -c 'from mosaic_core import export_deepzoom' 不抛;/tmp 冒烟脚本三项存在检查 True
+  status: stable
+
+- date: 2026-04-17
+  type: feat
+  target: chatgpt/mosaic_core.py
   change: 实现 build_report(assignment, tile_records, elapsed, bad_files) -> ReportBundle(文字 + 使用柱状 + 冷宫墙)
   rationale: 报告是这个玩具"发朋友群秒上桌"的核心;TOP 5 + 冷宫 + 坏图三段式
   action: Counter 统计使用次数;matplotlib 画排序柱状图;至多 5×5=25 张冷宫缩略图墙

@@ -332,3 +332,91 @@ def build_report(
         usage_bar_fig=bar_fig,
         cold_wall_fig=wall_fig,
     )
+
+
+# ---------- deepzoom ----------
+
+_DZI_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<Image xmlns="http://schemas.microsoft.com/deepzoom/2008"
+       Format="jpg" Overlap="{overlap}" TileSize="{tile_size}">
+  <Size Width="{width}" Height="{height}"/>
+</Image>
+"""
+
+_OPENSEADRAGON_HTML = """<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Photomosaic — DeepZoom</title>
+    <style>
+        html, body {{ margin: 0; height: 100%; background: #111; }}
+        #viewer {{ width: 100vw; height: 100vh; }}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/openseadragon@4/build/openseadragon/openseadragon.min.js"></script>
+</head>
+<body>
+    <div id="viewer"></div>
+    <script>
+        OpenSeadragon({{
+            id: "viewer",
+            prefixUrl: "https://cdn.jsdelivr.net/npm/openseadragon@4/build/openseadragon/images/",
+            tileSources: "{dzi_name}"
+        }});
+    </script>
+</body>
+</html>
+"""
+
+
+def export_deepzoom(
+    png_path: Path,
+    out_dir: Path,
+    tile_size: int = 256,
+    overlap: int = 1,
+    jpeg_quality: int = 85,
+) -> Path:
+    """Slice a PNG into a DeepZoom (DZI) pyramid plus an OpenSeadragon index.html.
+
+    Writes: out_dir/mosaic.dzi, out_dir/mosaic_files/<level>/<col>_<row>.jpg,
+            out_dir/index.html. Returns the index.html path.
+
+    Pure PIL implementation — no external deepzoom library needed.
+    """
+    png_path = Path(png_path)
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    base = Image.open(png_path).convert("RGB")
+    width, height = base.size
+    max_dim = max(width, height)
+    max_level = math.ceil(math.log2(max_dim)) if max_dim > 1 else 0
+
+    dzi_name = "mosaic.dzi"
+    files_dir = out_dir / "mosaic_files"
+    files_dir.mkdir(parents=True, exist_ok=True)
+
+    for level in range(max_level + 1):
+        scale = 2 ** (max_level - level)
+        lw = max(1, math.ceil(width / scale))
+        lh = max(1, math.ceil(height / scale))
+        level_img = base.resize((lw, lh), Image.LANCZOS)
+        level_dir = files_dir / str(level)
+        level_dir.mkdir(parents=True, exist_ok=True)
+        cols = math.ceil(lw / tile_size)
+        rows = math.ceil(lh / tile_size)
+        for col in range(cols):
+            for row in range(rows):
+                x0 = max(0, col * tile_size - overlap)
+                y0 = max(0, row * tile_size - overlap)
+                x1 = min(lw, (col + 1) * tile_size + overlap)
+                y1 = min(lh, (row + 1) * tile_size + overlap)
+                tile = level_img.crop((x0, y0, x1, y1))
+                tile.save(level_dir / f"{col}_{row}.jpg", "JPEG", quality=jpeg_quality)
+
+    (out_dir / dzi_name).write_text(
+        _DZI_XML.format(overlap=overlap, tile_size=tile_size, width=width, height=height),
+        encoding="utf-8",
+    )
+    index_path = out_dir / "index.html"
+    index_path.write_text(_OPENSEADRAGON_HTML.format(dzi_name=dzi_name), encoding="utf-8")
+    return index_path
