@@ -2,6 +2,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import List
 from PIL import Image, UnidentifiedImageError
+import hashlib
+import pickle
+from dataclasses import dataclass
+import numpy as np
+from skimage.color import rgb2lab
 
 _EXTS = {".jpg", ".jpeg", ".png"}
 
@@ -25,3 +30,44 @@ def scan_tile_dir(tile_dir: str, min_side: int = 32) -> List[str]:
             continue
         out.append(str(p))
     return out
+
+
+@dataclass
+class TileIndex:
+    paths: List[str]
+    lab_mean: np.ndarray  # shape (N, 3), dtype float32
+    clip_emb: np.ndarray | None = None  # shape (N, D) if computed
+
+
+def _lab_mean_of(path: str) -> np.ndarray:
+    with Image.open(path) as im:
+        im = im.convert("RGB").resize((64, 64), Image.LANCZOS)
+        arr = np.asarray(im, dtype=np.float32) / 255.0
+    lab = rgb2lab(arr)
+    return lab.reshape(-1, 3).mean(axis=0).astype(np.float32)
+
+
+def build_tile_index(tile_dir: str, min_side: int = 32) -> TileIndex:
+    paths = scan_tile_dir(tile_dir, min_side=min_side)
+    if not paths:
+        raise ValueError(f"no valid tiles in {tile_dir}")
+    lab = np.stack([_lab_mean_of(p) for p in paths]).astype(np.float32)
+    return TileIndex(paths=paths, lab_mean=lab)
+
+
+def _cache_key(tile_dir: str, min_side: int) -> str:
+    h = hashlib.sha1(f"{Path(tile_dir).resolve()}::{min_side}".encode()).hexdigest()[:16]
+    return f"tileindex_{h}.pkl"
+
+
+def load_or_build_index(tile_dir: str, cache_dir: str = ".cache", min_side: int = 32) -> TileIndex:
+    cache_root = Path(cache_dir)
+    cache_root.mkdir(parents=True, exist_ok=True)
+    cache_path = cache_root / _cache_key(tile_dir, min_side)
+    if cache_path.exists():
+        with cache_path.open("rb") as f:
+            return pickle.load(f)
+    idx = build_tile_index(tile_dir, min_side=min_side)
+    with cache_path.open("wb") as f:
+        pickle.dump(idx, f)
+    return idx

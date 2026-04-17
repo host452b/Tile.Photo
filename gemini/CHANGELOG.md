@@ -8,6 +8,16 @@
 - date: 2026-04-17
   type: feat
   target: src/tile_pool.py
+  change: TileIndex dataclass + build_tile_index (LAB mean via skimage.rgb2lab on 64x64 thumbnail) + load_or_build_index with pickle cache keyed by sha1(abspath::min_side)
+  rationale: LAB mean is perceptually better than RGB for color distance; pickle cache makes re-runs instant (user will tweak sliders many times)
+  action: 64x64 LANCZOS thumbnail → rgb2lab → mean over pixels; cache file name is stable hash of tile_dir abspath
+  result: 4/4 tests pass, cache survives source deletion
+  validation: pytest tests/test_tile_pool.py -v
+  status: stable
+
+- date: 2026-04-17
+  type: feat
+  target: src/tile_pool.py
   change: scan_tile_dir(path, min_side=32) recursively returns valid jpg/png paths, skipping broken/tiny
   rationale: Tile pool input is user's chaotic photo dump — must survive broken files and thumbnails silently
   action: Pillow Image.verify + size check; skip UnidentifiedImageError/OSError
