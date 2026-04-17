@@ -7,6 +7,16 @@
 
 - date: 2026-04-17
   type: feat
+  target: src/target.py
+  change: split_into_patches(path, grid, patch_px=2) returns (LAB mean per cell, source RGB per cell)
+  rationale: Separates target parsing from matching; LAB mean drives match distance, source RGB drives tone transfer
+  action: Resize to grid × patch_px, rgb2lab, reshape to (rows, patch_px, cols, patch_px, 3), mean over patch axes
+  result: 2/2 tests pass, non-divisible sizes handled by LANCZOS resize
+  validation: pytest tests/test_target.py -v
+  status: stable
+
+- date: 2026-04-17
+  type: feat
   target: src/tile_pool.py
   change: load_tags(tile_dir, paths) reads tags.json (glob-pattern → tag name), defaults to 'untagged'
   rationale: Powers the "23% from 2019 Japan trip" narrative in final report — emotional payoff for user
