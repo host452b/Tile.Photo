@@ -34,3 +34,16 @@
   result: 4/4 tests pass
   validation: pytest tests/test_config.py -v
   status: stable
+
+- date: 2026-04-17
+  type: try-failed
+  target: conftest.py
+  change: Removed 41-line conftest.py that installed a custom MetaPathFinder to force src/ package resolution
+  rationale: Implementer added it thinking global sys.path entries (gitlab-mr-analyzer/src, auto-yes/.../src) were hijacking `from src.config` imports
+  action: Deleted conftest.py; verified pytest tests/test_config.py -v still reports 4/4 passed from gemini/ cwd
+  result: Tests pass without the workaround — pytest's default rootdir-based import resolution handles the local src/ correctly when invoked from gemini/
+  problem_context: ImportError for src.config when tests were (apparently) invoked from an unexpected cwd during implementer's initial pass
+  workaround_reason: A 41-line MetaPathFinder is wildly over-engineered for a toy project; the actual issue (if any) would have been fixable with 3 lines of pyproject.toml pythonpath config
+  next_action: If a future task sees genuine import collision, add `[tool.pytest.ini_options] pythonpath = ["."]` to pyproject.toml — not a MetaPathFinder
+  next_result: pending (no collision seen yet)
+  status: reverted
