@@ -1,0 +1,1486 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Tile.Photo — Darkroom Console</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..900,0..100;1,9..144,300..900,0..100&family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg-0:#0E0B08;
+    --bg-1:#15100C;
+    --bg-2:#1D1711;
+    --bg-3:#271F17;
+    --bg-4:#33291F;
+    --line-1:#2D241B;
+    --line-2:#3D3124;
+    --line-3:#50402E;
+    --txt-0:#F1E6D0;
+    --txt-1:#B0A488;
+    --txt-2:#746752;
+    --txt-3:#4A4132;
+    --amber:#EAA34E;
+    --amber-dim:#A17434;
+    --amber-glow:rgba(234,163,78,.18);
+    --mint:#95C58A;
+    --mint-dim:#627D5C;
+    --rust:#C65A42;
+    --rust-dim:#7A3A2A;
+    --violet:#9F87C7;
+    --violet-dim:#6B5785;
+
+    --f-display:"Fraunces",Georgia,serif;
+    --f-body:"Bricolage Grotesque","Helvetica Neue",sans-serif;
+    --f-mono:"JetBrains Mono","SF Mono",monospace;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg-0);color:var(--txt-0);font-family:var(--f-body);min-height:100vh;overflow-x:hidden}
+  body{
+    background:
+      radial-gradient(1400px 900px at 15% -10%, rgba(234,163,78,.035), transparent 70%),
+      radial-gradient(1200px 800px at 100% 110%, rgba(159,135,199,.025), transparent 65%),
+      linear-gradient(180deg, var(--bg-0) 0%, #0C0907 100%);
+    font-size:14px;
+    line-height:1.45;
+    letter-spacing:-0.005em;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:1000;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='4'/><feColorMatrix values='0 0 0 0 0.95 0 0 0 0 0.85 0 0 0 0 0.7 0 0 0 0.08 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    opacity:.7;mix-blend-mode:overlay;
+  }
+
+  /* ───────── layout shell ───────── */
+  .app{
+    max-width:1480px;margin:0 auto;padding:26px 36px 48px;
+    display:grid;gap:18px;
+    grid-template-rows:auto 1fr auto auto;
+    min-height:100vh;
+  }
+
+  /* ───────── top rail ───────── */
+  .rail{
+    display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:32px;
+    padding:14px 22px;border:1px solid var(--line-1);background:var(--bg-1);
+    border-radius:2px;
+  }
+  .brand{
+    font-family:var(--f-display);font-weight:450;font-size:22px;
+    font-variation-settings:"opsz" 144,"SOFT" 30;
+    letter-spacing:.14em;color:var(--txt-0);
+    display:flex;align-items:center;gap:10px;
+  }
+  .brand::before{
+    content:"";display:inline-block;width:22px;height:22px;
+    background:
+      linear-gradient(135deg, var(--amber) 0%, var(--amber) 24%, transparent 24%, transparent 26%, var(--amber) 26%, var(--amber) 50%, transparent 50%, transparent 52%, var(--rust) 52%, var(--rust) 74%, transparent 74%, transparent 76%, var(--amber) 76%, var(--amber) 100%);
+    outline:1px solid var(--amber-dim);outline-offset:1px;
+  }
+  .brand-sub{
+    font-family:var(--f-mono);font-weight:400;font-size:10px;letter-spacing:.18em;
+    color:var(--txt-2);text-transform:uppercase;padding:3px 0 0 14px;border-left:1px solid var(--line-2);margin-left:4px;
+  }
+
+  .context{display:flex;gap:18px;align-items:center;flex-wrap:wrap;justify-content:center}
+  .chip{
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:var(--f-mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+    padding:6px 10px;border:1px solid var(--line-2);background:var(--bg-2);color:var(--txt-1);
+  }
+  .chip--local{color:var(--mint);border-color:#2E4028;background:rgba(149,197,138,.06)}
+  .chip--local::before{
+    content:"";width:6px;height:6px;border-radius:50%;background:var(--mint);
+    box-shadow:0 0 10px var(--mint);
+    animation:pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.85)}}
+
+  .meta{
+    font-family:var(--f-mono);font-size:11px;color:var(--txt-1);letter-spacing:.02em;
+    display:flex;gap:10px;align-items:baseline;
+  }
+  .meta b{color:var(--txt-0);font-weight:500}
+  .meta span{color:var(--txt-2)}
+
+  .version{
+    display:flex;align-items:center;gap:14px;
+    padding-left:22px;border-left:1px solid var(--line-2);
+  }
+  .seal{
+    width:48px;height:48px;border-radius:50%;
+    border:1px solid var(--amber-dim);
+    display:grid;place-items:center;position:relative;
+    background:radial-gradient(circle at 35% 30%, rgba(234,163,78,.18), transparent 70%);
+  }
+  .seal::before,.seal::after{
+    content:"";position:absolute;inset:-4px;border-radius:50%;
+    border:1px dashed var(--amber-dim);opacity:.4;
+  }
+  .seal::after{inset:4px;border-style:dotted;opacity:.25}
+  .seal-n{font-family:var(--f-display);font-weight:500;font-size:11px;color:var(--amber);font-variation-settings:"opsz" 9}
+  .seal-num{font-family:var(--f-display);font-weight:600;font-size:15px;color:var(--txt-0);line-height:1}
+  .vmeta{font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;color:var(--txt-2);text-transform:uppercase;line-height:1.7}
+  .vmeta b{color:var(--txt-0);font-weight:500}
+
+  /* ───────── workspace ───────── */
+  .workspace{
+    display:grid;grid-template-columns:1.62fr 1fr;gap:18px;min-height:560px;
+  }
+  .panel{
+    background:var(--bg-1);border:1px solid var(--line-1);border-radius:2px;
+    display:flex;flex-direction:column;position:relative;
+    overflow:hidden;
+  }
+  .panel-head{
+    display:flex;align-items:center;justify-content:space-between;gap:20px;
+    padding:12px 18px;border-bottom:1px solid var(--line-1);
+    background:linear-gradient(180deg, var(--bg-2) 0%, var(--bg-1) 100%);
+  }
+  .stage-label{
+    font-family:var(--f-mono);font-size:10.5px;letter-spacing:.26em;text-transform:uppercase;
+    color:var(--txt-1);display:flex;align-items:center;gap:10px;
+  }
+  .stage-label::before{
+    content:"";width:6px;height:6px;background:var(--amber);transform:rotate(45deg);
+  }
+  .stage-meta{font-family:var(--f-mono);font-size:10.5px;color:var(--txt-2);letter-spacing:.05em}
+  .stage-meta b{color:var(--txt-0);font-weight:500}
+
+  /* ───────── canvas stage ───────── */
+  .canvas-body{
+    flex:1;padding:22px;position:relative;
+    display:grid;grid-template-columns:170px 1fr;gap:24px;
+  }
+  .reference{
+    display:flex;flex-direction:column;gap:10px;
+  }
+  .ref-label{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--txt-2);display:flex;justify-content:space-between;align-items:baseline}
+  .ref-label b{color:var(--amber);font-weight:400;cursor:pointer;letter-spacing:.1em;text-transform:none}
+  .ref-label b:hover{color:var(--txt-0)}
+  .ref-img{
+    aspect-ratio:3/4;border:1px solid var(--line-2);position:relative;overflow:hidden;
+    background:#0A0807;cursor:pointer;
+  }
+  .ref-img.drop-hover{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber) inset}
+  .ref-img canvas,.ref-img img{width:100%;height:100%;display:block;object-fit:cover}
+  .ref-img-empty{
+    position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+    font-family:var(--f-mono);font-size:10px;color:var(--txt-2);letter-spacing:.14em;text-transform:uppercase;
+    padding:10px;text-align:center;
+  }
+  .ref-img-empty svg{width:26px;height:26px;color:var(--amber-dim);margin-bottom:4px}
+  .ref-img-empty b{color:var(--txt-0);font-weight:500;font-size:11px;letter-spacing:.1em}
+  .ref-foot{font-family:var(--f-mono);font-size:10px;color:var(--txt-1);line-height:1.6;word-break:break-all}
+  .ref-foot b{color:var(--txt-0);font-weight:500}
+  .ref-foot span{color:var(--txt-3)}
+  .ref-swatch{display:flex;gap:3px;margin-top:8px;min-height:16px}
+  .ref-swatch i{width:100%;height:16px;display:block}
+
+  .stage-main{
+    position:relative;display:flex;flex-direction:column;gap:14px;
+  }
+  .mosaic{
+    flex:1;position:relative;background:#0A0705;
+    border:1px solid var(--line-2);
+    overflow:hidden;min-height:420px;
+    box-shadow:inset 0 0 60px rgba(0,0,0,.8);
+  }
+  .mosaic.drop-hover{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber) inset, inset 0 0 80px rgba(234,163,78,.1)}
+  .mosaic canvas{width:100%;height:100%;display:block;image-rendering:pixelated}
+  .mosaic-overlay{
+    position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+    padding:40px;text-align:center;z-index:2;
+    background:radial-gradient(ellipse at center, rgba(14,11,8,.7) 0%, rgba(14,11,8,.95) 80%);
+    pointer-events:none;
+  }
+  .mosaic-overlay.hidden{display:none}
+  .mosaic-overlay svg{width:48px;height:48px;color:var(--amber);opacity:.6}
+  .mosaic-overlay h2{
+    font-family:var(--f-display);font-weight:400;font-size:30px;color:var(--txt-0);
+    font-variation-settings:"opsz" 144,"SOFT" 30;letter-spacing:-.01em;line-height:1.15;
+  }
+  .mosaic-overlay h2 em{font-style:italic;color:var(--amber)}
+  .mosaic-overlay p{font-family:var(--f-mono);font-size:11px;color:var(--txt-1);letter-spacing:.14em;text-transform:uppercase;max-width:420px}
+  .mosaic-overlay .cta{
+    pointer-events:auto;
+    display:inline-flex;align-items:center;gap:12px;
+    font-family:var(--f-display);font-variation-settings:"opsz" 144;font-weight:500;font-size:17px;
+    padding:14px 28px;border:1px solid var(--amber);color:var(--bg-0);background:var(--amber);
+    cursor:pointer;letter-spacing:.04em;transition:all .2s;
+  }
+  .mosaic-overlay .cta:hover{background:#FFC078;border-color:#FFC078;transform:translateY(-1px)}
+  .mosaic-overlay .cta[disabled]{background:var(--bg-3);color:var(--txt-2);border-color:var(--line-2);cursor:not-allowed;transform:none}
+  .mosaic-overlay .cta b{font-family:var(--f-mono);font-weight:400;font-size:12px;letter-spacing:.16em;text-transform:uppercase;opacity:.7}
+  .mosaic-overlay .row{display:flex;gap:10px;align-items:center}
+  .mosaic-overlay .muted{pointer-events:auto;color:var(--txt-1);cursor:pointer;text-decoration:underline;text-decoration-color:var(--line-3);font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:none}
+  .mosaic-overlay .muted:hover{color:var(--amber);text-decoration-color:var(--amber)}
+
+  .crosshair{
+    position:absolute;pointer-events:none;z-index:3;
+    font-family:var(--f-mono);font-size:10px;color:var(--amber);
+    letter-spacing:.08em;
+  }
+  .crosshair--tl{top:10px;left:12px}
+  .crosshair--tr{top:10px;right:12px;text-align:right}
+  .crosshair--bl{bottom:10px;left:12px}
+  .crosshair--br{bottom:10px;right:12px;text-align:right}
+  .crosshair b{color:var(--txt-0);font-weight:500}
+  .crosshair span{color:var(--txt-2)}
+
+  .progress-row{
+    display:grid;grid-template-columns:1fr auto auto auto auto;gap:24px;align-items:end;
+    padding-top:4px;
+  }
+  .throughput{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+  .throughput-num{
+    font-family:var(--f-display);font-weight:600;font-size:38px;line-height:1;
+    color:var(--amber);font-variation-settings:"opsz" 144;letter-spacing:-.02em;
+    display:flex;align-items:baseline;gap:4px;
+    min-width:80px;
+  }
+  .throughput-num em{font-family:var(--f-mono);font-weight:400;font-size:12px;color:var(--txt-1);font-style:normal;letter-spacing:.1em}
+  .throughput-label{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--txt-2)}
+
+  .progress-bar{
+    height:36px;border:1px solid var(--line-2);position:relative;background:var(--bg-2);
+    display:flex;flex-direction:column;
+  }
+  .progress-bar-meta{
+    display:flex;justify-content:space-between;align-items:baseline;padding:4px 8px 0;
+    font-family:var(--f-mono);font-size:10px;color:var(--txt-1);
+  }
+  .progress-bar-meta b{color:var(--txt-0);font-weight:500}
+  .progress-bar-track{flex:1;position:relative;margin:2px 0 0;background:var(--bg-3);overflow:hidden}
+  .progress-bar-fill{
+    position:absolute;inset:0;right:100%;
+    background:linear-gradient(90deg, var(--amber-dim) 0%, var(--amber) 80%, #FFD089 100%);
+    box-shadow:0 0 20px rgba(234,163,78,.35);
+    transition:right .18s ease-out;
+  }
+  .progress-bar-fill::after{
+    content:"";position:absolute;inset:0;
+    background:repeating-linear-gradient(-45deg, transparent 0 6px, rgba(0,0,0,.12) 6px 7px);
+  }
+  .eta{display:flex;flex-direction:column;gap:2px}
+  .eta-label{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--txt-2)}
+  .eta-val{font-family:var(--f-mono);font-size:16px;color:var(--txt-0);letter-spacing:.04em}
+  .eta-val em{color:var(--txt-2);font-style:normal;font-size:12px}
+  .download-btn{
+    font-family:var(--f-display);font-weight:500;font-size:14px;
+    padding:10px 18px;border:1px solid var(--amber);color:var(--amber);background:transparent;
+    cursor:pointer;letter-spacing:.04em;transition:all .15s;
+    display:flex;align-items:center;gap:8px;
+  }
+  .download-btn:hover{background:var(--amber);color:var(--bg-0)}
+  .download-btn[disabled]{opacity:.35;cursor:not-allowed;border-color:var(--line-2);color:var(--txt-2)}
+  .download-btn[disabled]:hover{background:transparent;color:var(--txt-2)}
+
+  /* ───────── log stage ───────── */
+  .log-body{
+    flex:1;padding:14px 0 14px;
+    display:flex;flex-direction:column;
+    position:relative;overflow:hidden;
+  }
+  .log-list{
+    flex:1;overflow-y:auto;
+    font-family:var(--f-mono);font-size:11.5px;line-height:1.55;
+    padding:4px 18px 60px;
+    mask-image:linear-gradient(180deg, transparent 0%, #000 8%, #000 85%, transparent 100%);
+    -webkit-mask-image:linear-gradient(180deg, transparent 0%, #000 8%, #000 85%, transparent 100%);
+  }
+  .log-entry{
+    padding:10px 0;border-bottom:1px dashed var(--line-1);
+    display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:baseline;
+    opacity:0;animation:logIn .45s ease forwards;
+  }
+  @keyframes logIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+  .log-entry:last-child{border-bottom:none}
+  .log-ts{color:var(--txt-3)}
+  .log-cell{color:var(--txt-1)}
+  .log-cell em{color:var(--txt-0);font-style:normal;font-weight:500}
+  .log-pick{color:var(--txt-0);text-align:right;font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .log-meta{
+    grid-column:2/4;padding:3px 0 0 0;display:flex;gap:14px;flex-wrap:wrap;
+    color:var(--txt-2);font-size:10.5px;
+  }
+  .tag{display:inline-flex;align-items:baseline;gap:4px}
+  .tag b{font-weight:500}
+  .tag.lab b{color:var(--mint)}
+  .tag.clip b{color:var(--violet)}
+  .tag.usage b{color:var(--amber)}
+  .tag.rsn{color:var(--txt-1);font-style:italic}
+  .log-empty{font-family:var(--f-mono);font-size:11px;color:var(--txt-3);letter-spacing:.08em;padding:40px 0;text-align:center;line-height:1.8}
+
+  .log-rate{
+    position:absolute;bottom:10px;left:18px;right:18px;z-index:2;
+    display:flex;justify-content:space-between;align-items:baseline;
+    font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--txt-2);
+    padding-top:10px;border-top:1px solid var(--line-1);background:linear-gradient(180deg, transparent, var(--bg-1) 30%);
+  }
+  .log-rate b{color:var(--txt-1);font-weight:500}
+
+  /* ───────── controls ───────── */
+  .controls{
+    background:var(--bg-1);border:1px solid var(--line-1);border-radius:2px;
+    display:grid;grid-template-columns:auto 1fr;
+  }
+  .controls-label{
+    padding:22px;border-right:1px solid var(--line-1);
+    display:flex;flex-direction:column;gap:10px;min-width:220px;
+    background:linear-gradient(135deg, var(--bg-2) 0%, var(--bg-1) 100%);
+  }
+  .controls-label .title{
+    font-family:var(--f-display);font-weight:400;font-size:28px;line-height:1.05;
+    font-variation-settings:"opsz" 144,"SOFT" 20;letter-spacing:-.01em;
+    color:var(--txt-0);
+  }
+  .controls-label .title em{font-style:italic;color:var(--amber);font-weight:400}
+  .controls-label .hint{font-size:12.5px;color:var(--txt-1);line-height:1.55}
+  .controls-label .hint b{color:var(--txt-0);font-weight:500}
+
+  .sliders{
+    display:grid;grid-template-columns:repeat(4,1fr);
+  }
+  .slider{
+    padding:18px 24px;border-right:1px solid var(--line-1);position:relative;
+    display:flex;flex-direction:column;gap:10px;
+  }
+  .slider:last-child{border-right:none}
+  .slider-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+  .slider-sym{
+    font-family:var(--f-display);font-weight:400;font-size:32px;line-height:1;
+    font-variation-settings:"opsz" 144,"SOFT" 40;color:var(--txt-0);
+    font-style:italic;
+  }
+  .slider-name{
+    font-family:var(--f-mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--txt-2);
+  }
+  .slider-val{
+    font-family:var(--f-mono);font-weight:500;font-size:15px;color:var(--amber);letter-spacing:.02em;
+  }
+  .slider-track{
+    height:28px;position:relative;background:var(--bg-2);border:1px solid var(--line-2);
+    cursor:ew-resize;user-select:none;
+  }
+  .slider-ticks{
+    position:absolute;inset:0;
+    background-image:repeating-linear-gradient(90deg, transparent 0 9.9%, var(--line-3) 9.9% 10%);
+    opacity:.6;pointer-events:none;
+  }
+  .slider-fill{
+    position:absolute;left:0;top:0;bottom:0;
+    background:linear-gradient(90deg, var(--amber-dim) 0%, var(--amber) 100%);
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.2);pointer-events:none;
+  }
+  .slider-knob{
+    position:absolute;top:-3px;bottom:-3px;width:4px;
+    background:#FFDFA8;
+    box-shadow:0 0 8px var(--amber),0 0 16px var(--amber-glow);
+    pointer-events:none;
+  }
+  .slider-axis{
+    display:flex;justify-content:space-between;
+    font-family:var(--f-mono);font-size:9.5px;color:var(--txt-3);letter-spacing:.1em;text-transform:uppercase;
+  }
+  .slider-axis b{color:var(--txt-1);font-weight:400}
+  .slider-hint{
+    font-size:11.5px;line-height:1.5;color:var(--txt-1);
+    min-height:3em;
+  }
+  .slider-hint b{color:var(--txt-0);font-weight:500}
+
+  .slider[data-param="lambda"] .slider-sym{color:var(--mint)}
+  .slider[data-param="lambda"] .slider-val{color:var(--mint)}
+  .slider[data-param="lambda"] .slider-fill{background:linear-gradient(90deg, var(--mint-dim), var(--mint))}
+  .slider[data-param="lambda"] .slider-knob{background:#C8E8BE;box-shadow:0 0 8px var(--mint)}
+  .slider[data-param="mu"] .slider-sym{color:var(--rust)}
+  .slider[data-param="mu"] .slider-val{color:var(--rust)}
+  .slider[data-param="mu"] .slider-fill{background:linear-gradient(90deg, var(--rust-dim), var(--rust))}
+  .slider[data-param="mu"] .slider-knob{background:#F0B0A0;box-shadow:0 0 8px var(--rust)}
+  .slider[data-param="alpha"] .slider-sym{color:var(--violet)}
+  .slider[data-param="alpha"] .slider-val{color:var(--violet)}
+  .slider[data-param="alpha"] .slider-fill{background:linear-gradient(90deg, var(--violet-dim), var(--violet))}
+  .slider[data-param="alpha"] .slider-knob{background:#D2C3EA;box-shadow:0 0 8px var(--violet)}
+
+  .slider[disabled]{opacity:.35;pointer-events:none}
+
+  /* ───────── pool strip ───────── */
+  .pool{
+    display:grid;grid-template-columns:auto 1fr auto;gap:22px;
+    background:var(--bg-1);border:1px solid var(--line-1);border-radius:2px;
+    padding:18px 22px;align-items:center;
+  }
+  .pool-meta{
+    display:flex;flex-direction:column;gap:3px;min-width:220px;
+  }
+  .pool-title{font-family:var(--f-mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--txt-2)}
+  .pool-head-num{
+    font-family:var(--f-display);font-weight:500;font-size:24px;color:var(--txt-0);font-variation-settings:"opsz" 144;
+    display:flex;align-items:baseline;gap:8px;line-height:1.1;
+  }
+  .pool-head-num em{font-family:var(--f-mono);font-weight:400;font-size:12px;color:var(--txt-2);font-style:normal;letter-spacing:.05em}
+  .pool-sub{font-size:11.5px;color:var(--txt-1);line-height:1.5}
+  .pool-sub b{color:var(--amber);font-weight:500}
+  .pool-sub .cold{color:var(--rust);font-weight:500}
+
+  .pool-grid{
+    display:grid;grid-template-columns:repeat(80,1fr);gap:2px;
+    height:58px;align-content:center;
+    min-height:58px;
+  }
+  .pool-cell{
+    aspect-ratio:1;min-height:8px;
+    position:relative;
+  }
+  .pool-cell::after{
+    content:"";position:absolute;inset:0;
+    outline:1px solid rgba(234,163,78,.15);outline-offset:-1px;
+    opacity:0;transition:opacity .15s;
+  }
+  .pool-cell:hover::after{opacity:1}
+  .pool-empty{
+    font-family:var(--f-mono);font-size:11px;color:var(--txt-3);letter-spacing:.08em;
+    text-align:center;padding:18px 0;
+    display:flex;align-items:center;justify-content:center;gap:10px;
+  }
+  .pool-empty b{color:var(--amber);cursor:pointer;font-weight:400;text-decoration:underline;text-decoration-color:var(--amber-dim)}
+  .pool-empty b:hover{color:var(--txt-0)}
+
+  .pool-legend{
+    display:flex;flex-direction:column;gap:6px;min-width:150px;align-items:flex-end;
+    font-family:var(--f-mono);font-size:10px;color:var(--txt-2);
+  }
+  .pool-legend-bar{
+    width:160px;height:8px;
+    background:linear-gradient(90deg, #2A1612 0%, #4A2A22 25%, #7A4A30 50%, var(--amber-dim) 75%, var(--amber) 100%);
+  }
+  .pool-legend-axis{display:flex;justify-content:space-between;width:160px;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase}
+  .pool-legend-axis b{color:var(--rust);font-weight:500}
+  .pool-legend-axis b.hot{color:var(--amber)}
+
+  /* ───────── spec rail ───────── */
+  .spec{
+    display:flex;justify-content:space-between;align-items:center;gap:24px;
+    padding:4px 8px;
+    font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--txt-3);
+  }
+  .spec div{display:flex;gap:16px}
+  .spec b{color:var(--txt-1);font-weight:400}
+  .spec em{color:var(--amber);font-style:normal}
+
+  /* ───────── dialog / toasts ───────── */
+  .hidden{display:none !important}
+
+  /* ───────── responsive ───────── */
+  @media (max-width: 1200px){
+    .workspace{grid-template-columns:1fr}
+    .controls{grid-template-columns:1fr}
+    .controls-label{border-right:none;border-bottom:1px solid var(--line-1)}
+    .sliders{grid-template-columns:repeat(2,1fr)}
+    .slider:nth-child(2){border-right:none}
+    .canvas-body{grid-template-columns:1fr}
+    .pool-grid{grid-template-columns:repeat(40,1fr);height:auto}
+    .progress-row{grid-template-columns:1fr 1fr;gap:12px}
+  }
+
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:0}
+  ::-webkit-scrollbar-thumb:hover{background:var(--amber-dim)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ═══════════ TOP RAIL ═══════════ -->
+  <header class="rail">
+    <div class="brand">
+      TILE·PHOTO
+      <span class="brand-sub">darkroom<br/>console</span>
+    </div>
+
+    <div class="context">
+      <span class="chip chip--local">100% Local · no upload</span>
+      <span class="meta" id="ctx-target"><b>—</b> <span>·</span> drop target image</span>
+      <span class="meta" id="ctx-pool"><b>0</b> tiles <span>·</span> drop folder to begin</span>
+      <span class="chip">Canvas · 1 thread</span>
+    </div>
+
+    <div class="version">
+      <div class="vmeta">
+        edition <br/><b>№ 0001 / ∞</b>
+      </div>
+      <div class="seal">
+        <div style="display:flex;flex-direction:column;align-items:center;line-height:1">
+          <span class="seal-n">v</span>
+          <span class="seal-num">0.4</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════════ WORKSPACE ═══════════ -->
+  <section class="workspace">
+
+    <!-- ─── canvas stage ─── -->
+    <div class="panel canvas-panel">
+      <div class="panel-head">
+        <span class="stage-label">process · cell-by-cell</span>
+        <span class="stage-meta" id="grid-meta">grid <b>—</b> · tile <b>16 px²</b> · out <b>—</b></span>
+      </div>
+
+      <div class="canvas-body">
+
+        <div class="reference">
+          <div class="ref-label">target <b id="target-swap" style="display:none">replace</b></div>
+          <div class="ref-img" id="target-drop">
+            <canvas id="target-canvas" style="display:none"></canvas>
+            <div class="ref-img-empty" id="target-empty">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 16l5-5 5 5 3-3 5 5"/><circle cx="9" cy="9" r="1.5" fill="currentColor"/></svg>
+              <b>Drop target</b>
+              <span>or click to choose</span>
+            </div>
+            <input type="file" id="target-file" accept="image/*" style="display:none"/>
+          </div>
+          <div class="ref-foot" id="target-meta">
+            <span>—</span><br/>
+            <span>drop a photo you want the mosaic to become</span>
+          </div>
+          <div class="ref-swatch" id="ref-swatch"></div>
+          <div class="ref-label" style="margin-top:12px">saliency · stub</div>
+          <div class="ref-img" style="aspect-ratio:3/2">
+            <svg viewBox="0 0 120 80" preserveAspectRatio="xMidYMid slice" id="saliency-svg">
+              <rect width="120" height="80" fill="#0A0807"/>
+              <text x="60" y="44" text-anchor="middle" font-family="JetBrains Mono" font-size="6" fill="#4A4132" letter-spacing="1">v0.5 · YOLO + CLIP</text>
+            </svg>
+          </div>
+        </div>
+
+        <div class="stage-main">
+          <div class="mosaic" id="mosaic-drop">
+            <canvas id="out-canvas"></canvas>
+            <div class="mosaic-overlay" id="mosaic-overlay">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="8" height="8"/><rect x="13" y="3" width="8" height="8"/><rect x="3" y="13" width="8" height="8"/><rect x="13" y="13" width="8" height="8"/><circle cx="12" cy="12" r="10" stroke-dasharray="2 2"/></svg>
+              <h2 id="overlay-title">Drop a folder of photos<br/>to start <em>weaving</em>.</h2>
+              <p id="overlay-sub">Or click below to pick files. Nothing leaves your browser.</p>
+              <div class="row">
+                <button class="cta" id="pool-pick">Choose photos <b>↵</b></button>
+                <span class="muted" id="pool-demo">use demo pool</span>
+              </div>
+              <input type="file" id="pool-file" accept="image/*" multiple webkitdirectory style="display:none"/>
+              <input type="file" id="pool-file-flat" accept="image/*" multiple style="display:none"/>
+            </div>
+
+            <div class="crosshair crosshair--tl" id="ch-tl" style="display:none">
+              <b id="ch-cell">cell —</b><br/>
+              <span id="ch-coord">—</span>
+            </div>
+            <div class="crosshair crosshair--tr" id="ch-tr" style="display:none">
+              <b id="ch-done">0 / 0</b><br/>
+              <span id="ch-pct">0.0%</span>
+            </div>
+            <div class="crosshair crosshair--bl">
+              <span>view · fit</span><br/>
+              <span id="fps">canvas · idle</span>
+            </div>
+            <div class="crosshair crosshair--br">
+              <span>heat · linear</span><br/>
+              <b id="clock">00:00:00</b>
+            </div>
+          </div>
+
+          <div class="progress-row">
+            <div class="progress-bar">
+              <div class="progress-bar-meta">
+                <span id="progress-label">idle</span>
+                <span><b id="cells-done">0</b> / <span id="cells-total">0</span> cells</span>
+              </div>
+              <div class="progress-bar-track">
+                <div class="progress-bar-fill" id="progress-fill"></div>
+              </div>
+            </div>
+
+            <div class="throughput">
+              <div class="throughput-num" id="cps">—<em>·</em></div>
+              <div class="throughput-label">cells / second</div>
+            </div>
+
+            <div class="eta">
+              <div class="eta-label">ETA</div>
+              <div class="eta-val" id="eta">—</div>
+            </div>
+
+            <div class="eta">
+              <div class="eta-label">elapsed</div>
+              <div class="eta-val" id="elapsed">—</div>
+            </div>
+
+            <button class="download-btn" id="download" disabled>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              Download PNG
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ─── log stage ─── -->
+    <div class="panel log-panel">
+      <div class="panel-head">
+        <span class="stage-label">decision log · live</span>
+        <span class="stage-meta"><span id="log-count">0</span> decisions · <b id="log-status">idle</b></span>
+      </div>
+      <div class="log-body">
+        <div class="log-list" id="log-list">
+          <div class="log-empty">
+            awaiting first match.<br/>
+            drop target + photos, then press <b style="color:var(--amber)">Weave</b>.
+          </div>
+        </div>
+        <div class="log-rate">
+          <span>matcher · <b>lab·L2</b></span>
+          <span>rerank · <b>λ μ</b></span>
+          <span>mean Δ <b id="mean-de">—</b></span>
+          <span>reuse avg <b id="mean-use">—</b></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ CONTROLS ═══════════ -->
+  <section class="controls">
+    <div class="controls-label">
+      <div class="stage-label">parameters · live</div>
+      <div class="title">Tune the <em>feel</em><br/>of the weave.</div>
+      <div class="hint">
+        Pull a slider, then press <b>Weave</b> again. Every decision rescored with new weights. <span style="color:var(--violet)">α CLIP</span> is a v0.5 stub.
+      </div>
+    </div>
+    <div class="sliders">
+
+      <div class="slider" data-param="tau" data-value="55">
+        <div class="slider-head">
+          <div>
+            <span class="slider-sym">τ</span>
+            <div class="slider-name">tone migration</div>
+          </div>
+          <span class="slider-val">0.55</span>
+        </div>
+        <div class="slider-track">
+          <div class="slider-ticks"></div>
+          <div class="slider-fill" style="width:55%"></div>
+          <div class="slider-knob" style="left:55%"></div>
+        </div>
+        <div class="slider-axis"><span>off · raw</span><b>sweet spot</b><span>forced</span></div>
+        <div class="slider-hint">How much each tile is <b>color-shifted</b> toward the target patch. Low = photos crisp up close. High = perfect at distance.</div>
+      </div>
+
+      <div class="slider" data-param="lambda" data-value="35">
+        <div class="slider-head">
+          <div>
+            <span class="slider-sym">λ</span>
+            <div class="slider-name">repeat penalty</div>
+          </div>
+          <span class="slider-val">0.35</span>
+        </div>
+        <div class="slider-track">
+          <div class="slider-ticks"></div>
+          <div class="slider-fill" style="width:35%"></div>
+          <div class="slider-knob" style="left:35%"></div>
+        </div>
+        <div class="slider-axis"><span>reuse freely</span><b>balanced</b><span>once</span></div>
+        <div class="slider-hint">Punishes any tile you've already placed. Higher values force use of your <b>cold photos</b>.</div>
+      </div>
+
+      <div class="slider" data-param="mu" data-value="25">
+        <div class="slider-head">
+          <div>
+            <span class="slider-sym">μ</span>
+            <div class="slider-name">neighbor penalty</div>
+          </div>
+          <span class="slider-val">0.25</span>
+        </div>
+        <div class="slider-track">
+          <div class="slider-ticks"></div>
+          <div class="slider-fill" style="width:25%"></div>
+          <div class="slider-knob" style="left:25%"></div>
+        </div>
+        <div class="slider-axis"><span>clustered</span><b>loose</b><span>scattered</span></div>
+        <div class="slider-hint">Avoids placing the same tile right next to itself. Kills the "clump" artifacts that Reddit hates.</div>
+      </div>
+
+      <div class="slider" data-param="alpha" data-value="0" disabled>
+        <div class="slider-head">
+          <div>
+            <span class="slider-sym">α</span>
+            <div class="slider-name">CLIP semantic</div>
+          </div>
+          <span class="slider-val">stub</span>
+        </div>
+        <div class="slider-track">
+          <div class="slider-ticks"></div>
+          <div class="slider-fill" style="width:0%"></div>
+          <div class="slider-knob" style="left:0%"></div>
+        </div>
+        <div class="slider-axis"><span>color only</span><b>mixed</b><span>semantics</span></div>
+        <div class="slider-hint">Weight of <b>CLIP embedding</b> vs LAB color. Ship in v0.5 — needs transformers.js (+50 MB).</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════ POOL STRIP ═══════════ -->
+  <section class="pool">
+    <div class="pool-meta">
+      <div class="pool-title">tile pool · usage map</div>
+      <div class="pool-head-num" id="pool-head"><span>0</span><em>/ 0 placed</em></div>
+      <div class="pool-sub" id="pool-sub">drop a folder to begin</div>
+    </div>
+
+    <div class="pool-grid" id="pool-grid">
+      <div class="pool-empty">no pool loaded · <b id="pool-browse">browse files</b></div>
+    </div>
+
+    <div class="pool-legend">
+      <div class="pool-legend-bar"></div>
+      <div class="pool-legend-axis"><b>冷 · cold</b> <span>neutral</span> <b class="hot">热 · hot</b></div>
+      <div style="margin-top:8px;font-size:10px;color:var(--txt-2);text-align:right;line-height:1.5">
+        cold photos get listed<br/>in the final report
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ SPEC RAIL ═══════════ -->
+  <footer class="spec">
+    <div>
+      <span>canvas · 2d</span>
+      <span>worker <b>1</b></span>
+      <span>mem <b id="mem">—</b></span>
+      <span>concurrency <b>8</b></span>
+    </div>
+    <div>
+      <span>lab · cie76</span>
+      <span>match · brute·L2</span>
+      <span>grid · auto</span>
+    </div>
+    <div>
+      <span>commit <b>local</b></span>
+      <span>licensed to <b>joe@local</b></span>
+      <span><em>◉ recording</em></span>
+    </div>
+  </footer>
+
+</div>
+
+<script type="module">
+/* ════════════════════════════════════════════════════════════════════
+   TILE·PHOTO — client-side photomosaic engine
+   one file, no deps, runs on your Mac.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ---------- constants ---------- */
+const TILE_CELL_PX   = 16;        // output cell resolution (px)
+const GRID_COLS      = 120;       // default columns (adapted to target aspect)
+const POOL_THUMB     = 32;        // internal thumbnail size for avg LAB
+const POOL_DRAW      = 16;        // thumbnail size kept for rendering
+const POOL_BATCH     = 8;         // concurrent decodes
+const POOL_GRID_SLOTS= 320;       // tiny squares shown in pool-strip
+
+/* ---------- state ---------- */
+const S = {
+  target: null,         // ImageBitmap
+  targetName: '',
+  cells: null,          // Float32Array length = grid.cols*grid.rows*3 (L,a,b per cell)
+  cellsRgb: null,       // Uint8ClampedArray length = grid.cols*grid.rows*3 (R,G,B per cell)
+  grid: { cols: GRID_COLS, rows: 0 },
+  pool: [],             // [{id,name,bitmap,lab,usage}]
+  poolReady: false,
+  running: false,
+  shouldStop: false,
+  placements: null,     // Uint16Array of tile ids per cell
+  params: { tau: 0.55, lambda: 0.35, mu: 0.25, alpha: 0 },
+};
+
+const $ = q => document.querySelector(q);
+
+/* ---------- color math (sRGB → LAB, CIE76) ---------- */
+function srgbToLin(v){ v/=255; return v<=0.04045? v/12.92 : Math.pow((v+0.055)/1.055, 2.4); }
+function rgbToLab(r,g,b){
+  r = srgbToLin(r); g = srgbToLin(g); b = srgbToLin(b);
+  const X = (r*0.4124564 + g*0.3575761 + b*0.1804375) / 0.95047;
+  const Y = (r*0.2126729 + g*0.7151522 + b*0.0721750) / 1.00000;
+  const Z = (r*0.0193339 + g*0.1191920 + b*0.9503041) / 1.08883;
+  const f = t => t > 0.008856 ? Math.cbrt(t) : (7.787*t + 16/116);
+  const fx = f(X), fy = f(Y), fz = f(Z);
+  return [116*fy - 16, 500*(fx-fy), 200*(fy-fz)];
+}
+function labL2(a,b){
+  const dl=a[0]-b[0], da=a[1]-b[1], db=a[2]-b[2];
+  return Math.sqrt(dl*dl + da*da + db*db);
+}
+
+/* ---------- avg color of a bitmap using a small scratch canvas ---------- */
+const scratch = document.createElement('canvas');
+scratch.width = POOL_THUMB; scratch.height = POOL_THUMB;
+const sctx = scratch.getContext('2d', {willReadFrequently:true});
+function avgLabFromBitmap(bitmap){
+  sctx.clearRect(0,0,POOL_THUMB,POOL_THUMB);
+  sctx.drawImage(bitmap, 0, 0, POOL_THUMB, POOL_THUMB);
+  const d = sctx.getImageData(0,0,POOL_THUMB,POOL_THUMB).data;
+  let r=0,g=0,bl=0,n=0;
+  for (let i=0;i<d.length;i+=4){
+    r+=d[i]; g+=d[i+1]; bl+=d[i+2]; n++;
+  }
+  r/=n; g/=n; bl/=n;
+  return { rgb:[r,g,bl], lab: rgbToLab(r,g,bl) };
+}
+
+/* ---------- TARGET ingest ---------- */
+async function loadTarget(file){
+  S.targetName = file.name;
+  const bm = await createImageBitmap(file);
+  S.target = bm;
+
+  const aspect = bm.width / bm.height;
+  S.grid.cols = GRID_COLS;
+  S.grid.rows = Math.max(4, Math.round(GRID_COLS / aspect));
+
+  // sample cell averages via downscaling target onto a canvas of grid size
+  const cv = document.createElement('canvas');
+  cv.width = S.grid.cols; cv.height = S.grid.rows;
+  cv.getContext('2d').drawImage(bm, 0, 0, cv.width, cv.height);
+  const d = cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data;
+
+  const N = S.grid.cols * S.grid.rows;
+  S.cells = new Float32Array(N * 3);
+  S.cellsRgb = new Uint8ClampedArray(N * 3);
+  for (let i=0;i<N;i++){
+    const r=d[i*4], g=d[i*4+1], b=d[i*4+2];
+    S.cellsRgb[i*3]=r; S.cellsRgb[i*3+1]=g; S.cellsRgb[i*3+2]=b;
+    const lab = rgbToLab(r,g,b);
+    S.cells[i*3]=lab[0]; S.cells[i*3+1]=lab[1]; S.cells[i*3+2]=lab[2];
+  }
+
+  paintTargetPreview(bm);
+  updateChromeAfterTarget();
+  refreshOverlay();
+}
+
+function paintTargetPreview(bm){
+  const cv = $('#target-canvas');
+  const ctx = cv.getContext('2d');
+  const pw = 200, ph = Math.round(pw * bm.height / bm.width);
+  cv.width = pw; cv.height = ph;
+  ctx.drawImage(bm, 0, 0, pw, ph);
+  cv.style.display = 'block';
+  $('#target-empty').style.display = 'none';
+  $('#target-swap').style.display = 'inline';
+
+  // dominant palette from cells
+  const cnt = S.grid.cols * S.grid.rows;
+  const bins = {};
+  for (let i=0;i<cnt;i++){
+    const r=S.cellsRgb[i*3]>>5, g=S.cellsRgb[i*3+1]>>5, b=S.cellsRgb[i*3+2]>>5;
+    const k=`${r}-${g}-${b}`;
+    bins[k] = (bins[k]||0) + 1;
+  }
+  const top = Object.entries(bins).sort((a,b)=>b[1]-a[1]).slice(0,7);
+  const swatch = $('#ref-swatch');
+  swatch.innerHTML = '';
+  top.forEach(([k])=>{
+    const [r,g,b] = k.split('-').map(Number);
+    const i = document.createElement('i');
+    i.style.background = `rgb(${r<<5},${g<<5},${b<<5})`;
+    swatch.appendChild(i);
+  });
+
+  $('#target-meta').innerHTML =
+    `<b>${S.targetName}</b><br/>` +
+    `<span>${bm.width} × ${bm.height} · grid ${S.grid.cols}×${S.grid.rows}</span>`;
+}
+
+function updateChromeAfterTarget(){
+  $('#ctx-target').innerHTML = `<b>${S.targetName}</b> <span>·</span> ${S.target.width}×${S.target.height} <span>·</span> target`;
+  const outW = S.grid.cols * TILE_CELL_PX;
+  const outH = S.grid.rows * TILE_CELL_PX;
+  $('#grid-meta').innerHTML = `grid <b>${S.grid.cols} × ${S.grid.rows}</b> · tile <b>${TILE_CELL_PX} px²</b> · out <b>${outW} × ${outH}</b>`;
+  $('#cells-total').textContent = (S.grid.cols * S.grid.rows).toLocaleString();
+
+  // resize output canvas to aspect
+  const out = $('#out-canvas');
+  out.width = outW; out.height = outH;
+  const ctx = out.getContext('2d');
+  ctx.fillStyle = '#0A0705';
+  ctx.fillRect(0, 0, outW, outH);
+}
+
+/* ---------- POOL ingest ---------- */
+async function loadPool(fileList){
+  const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+  if (!files.length){ toast('No images in selection.'); return; }
+
+  S.pool = [];
+  S.poolReady = false;
+  renderPoolGrid([]);
+  $('#pool-sub').innerHTML = `analyzing <b>${files.length.toLocaleString()}</b> files…`;
+  $('#ctx-pool').innerHTML = `<b>0</b> / ${files.length} tiles <span>·</span> reading`;
+
+  const t0 = performance.now();
+  for (let i=0; i<files.length; i += POOL_BATCH){
+    const chunk = files.slice(i, i + POOL_BATCH);
+    const results = await Promise.all(chunk.map(processTile));
+    for (const t of results) if (t) S.pool.push(t);
+    updatePoolProgress(S.pool.length, files.length, t0);
+    // yield to UI
+    await nextFrame();
+  }
+
+  S.poolReady = true;
+  const elapsed = ((performance.now()-t0)/1000).toFixed(1);
+  $('#pool-sub').innerHTML = `<b>${S.pool.length.toLocaleString()}</b> tiles ready in ${elapsed}s · avg <b>${(S.pool.length/elapsed).toFixed(0)}</b>/s`;
+  $('#ctx-pool').innerHTML = `<b>${S.pool.length.toLocaleString()}</b> tiles <span>·</span> <span style="color:var(--mint)">ready</span>`;
+  renderPoolGrid(S.pool);
+  refreshOverlay();
+}
+
+async function processTile(file){
+  try {
+    const bm = await createImageBitmap(file);
+    // resize once to POOL_THUMB for avg-LAB computation, keep POOL_DRAW version for rendering
+    const cvDraw = document.createElement('canvas');
+    cvDraw.width = POOL_DRAW; cvDraw.height = POOL_DRAW;
+    cvDraw.getContext('2d').drawImage(bm, 0, 0, POOL_DRAW, POOL_DRAW);
+    const drawBm = await createImageBitmap(cvDraw);
+
+    const { lab, rgb } = avgLabFromBitmap(bm);
+    bm.close?.();
+
+    return {
+      id: S.pool.length,
+      name: file.name,
+      bitmap: drawBm,
+      lab, rgb,
+      usage: 0,
+    };
+  } catch (e){
+    return null;
+  }
+}
+
+function updatePoolProgress(done, total, t0){
+  $('#ctx-pool').innerHTML = `<b>${done.toLocaleString()}</b> / ${total.toLocaleString()} tiles <span>·</span> reading`;
+  if (done % 20 === 0 || done === total){
+    $('#pool-sub').innerHTML = `analyzing <b>${done.toLocaleString()}</b> / ${total.toLocaleString()} · <span style="color:var(--amber)">${((done/total)*100).toFixed(0)}%</span>`;
+  }
+}
+
+function renderPoolGrid(pool){
+  const grid = $('#pool-grid');
+  grid.innerHTML = '';
+  if (!pool.length){
+    grid.innerHTML = `<div class="pool-empty">no pool loaded · <b id="pool-browse">browse files</b></div>`;
+    $('#pool-browse').onclick = () => $('#pool-file-flat').click();
+    return;
+  }
+  const maxUse = Math.max(1, ...pool.map(p => p.usage));
+  // Sort by usage desc to make heatmap readable
+  const sorted = [...pool].sort((a,b)=>b.usage-a.usage);
+  const slots = Math.min(POOL_GRID_SLOTS, sorted.length);
+  for (let i=0;i<slots;i++){
+    const t = sorted[i];
+    const el = document.createElement('div');
+    el.className = 'pool-cell';
+    const [r,g,b] = t.rgb;
+    const heat = t.usage / maxUse;
+    // Tint by usage: cold = rust hue, hot = amber
+    if (t.usage === 0){
+      el.style.background = `rgb(${r*0.35|0},${g*0.28|0},${b*0.28|0})`;
+    } else {
+      el.style.background = `rgb(${r|0},${g|0},${b|0})`;
+      if (heat > 0.7){
+        el.style.outline = '1px solid var(--amber)';
+        el.style.outlineOffset = '-1px';
+      }
+    }
+    el.title = `${t.name} · used ${t.usage}×`;
+    grid.appendChild(el);
+  }
+  // pool header numbers
+  const used = pool.filter(p => p.usage>0).length;
+  const cold = pool.length - used;
+  const hot = pool.filter(p => p.usage >= 20).length;
+  $('#pool-head').innerHTML = `<span>${used.toLocaleString()}</span><em>/ ${pool.length.toLocaleString()} placed</em>`;
+  $('#pool-sub').innerHTML = `<b>${hot} hot</b> (used ≥ 20×) · <span class="cold">${cold.toLocaleString()} in 冷宫</span> (unused)`;
+}
+
+/* ---------- MATCH + RENDER ---------- */
+async function weave(){
+  if (!S.target){ toast('Drop a target image first.'); return; }
+  if (!S.poolReady || !S.pool.length){ toast('Drop a folder of photos first.'); return; }
+  if (S.running){ S.shouldStop = true; return; }
+
+  S.running = true; S.shouldStop = false;
+  $('#download').disabled = true;
+  $('#log-status').textContent = 'weaving';
+  $('#fps').textContent = 'canvas · rendering';
+  $('#log-list').innerHTML = '';
+  $('#ch-tl').style.display = 'block';
+  $('#ch-tr').style.display = 'block';
+
+  // reset usage
+  S.pool.forEach(t => t.usage = 0);
+  const N = S.grid.cols * S.grid.rows;
+  S.placements = new Uint16Array(N).fill(0xFFFF);
+
+  // determine cell order (row-by-row, but interleaved for a faster-looking fill)
+  const order = buildOrder();
+
+  const out = $('#out-canvas');
+  const ctx = out.getContext('2d');
+  ctx.fillStyle = '#0A0705';
+  ctx.fillRect(0, 0, out.width, out.height);
+  // subtle ghost of target so user sees intent
+  ctx.globalAlpha = 0.12;
+  ctx.drawImage(S.target, 0, 0, out.width, out.height);
+  ctx.globalAlpha = 1.0;
+
+  const tileIds = new Uint32Array(S.pool.length);
+  for (let i=0;i<tileIds.length;i++) tileIds[i]=i;
+
+  const t0 = performance.now();
+  let lastFrame = t0;
+  let cellsInFrame = 0;
+  let deSum = 0, useSum = 0;
+  let logCounter = 0;
+
+  const logSample = Math.max(1, Math.floor(N/220)); // ~220 log entries total
+
+  for (let ci=0; ci<order.length; ci++){
+    if (S.shouldStop) break;
+
+    const cellIdx = order[ci];
+    const cx = cellIdx % S.grid.cols;
+    const cy = (cellIdx / S.grid.cols) | 0;
+
+    const targetLab = [S.cells[cellIdx*3], S.cells[cellIdx*3+1], S.cells[cellIdx*3+2]];
+    const pick = matchCell(targetLab, cx, cy);
+    S.placements[cellIdx] = pick.tile.id;
+    pick.tile.usage++;
+
+    // draw tile
+    const dx = cx * TILE_CELL_PX;
+    const dy = cy * TILE_CELL_PX;
+    ctx.drawImage(pick.tile.bitmap, dx, dy, TILE_CELL_PX, TILE_CELL_PX);
+
+    // tone migration τ: overlay with target RGB at alpha=τ*0.55
+    if (S.params.tau > 0.02){
+      const tr = S.cellsRgb[cellIdx*3], tg = S.cellsRgb[cellIdx*3+1], tb = S.cellsRgb[cellIdx*3+2];
+      ctx.fillStyle = `rgba(${tr},${tg},${tb},${S.params.tau * 0.55})`;
+      ctx.fillRect(dx, dy, TILE_CELL_PX, TILE_CELL_PX);
+    }
+
+    deSum += pick.labD;
+    useSum += pick.tile.usage;
+    cellsInFrame++;
+
+    // sample log entries
+    if (logCounter % logSample === 0){
+      addLogEntry(cx, cy, pick.tile, pick.labD, targetLab);
+    }
+    logCounter++;
+
+    // UI updates every ~40ms
+    const now = performance.now();
+    if (now - lastFrame > 38){
+      const cps = (cellsInFrame / ((now - lastFrame)/1000)) | 0;
+      updateProgress(ci+1, order.length, cps, t0, deSum/(ci+1), useSum/(ci+1));
+      drawCursor(cx, cy);
+      lastFrame = now;
+      cellsInFrame = 0;
+      await nextFrame();
+    }
+  }
+
+  // final update
+  updateProgress(order.length, order.length, 0, t0, deSum/N, useSum/N);
+  drawCursor(-1,-1);
+  $('#fps').textContent = 'canvas · done';
+  $('#log-status').textContent = S.shouldStop ? 'stopped' : 'done';
+  $('#download').disabled = false;
+  S.running = false;
+  S.shouldStop = false;
+  renderPoolGrid(S.pool);
+
+  if (!S.shouldStop) finalToast();
+}
+
+function buildOrder(){
+  const N = S.grid.cols * S.grid.rows;
+  const arr = new Uint32Array(N);
+  for (let i=0;i<N;i++) arr[i]=i;
+  // shuffle then sort by a diagonal progress key for visible sweep
+  return Array.from(arr).sort((a,b)=>{
+    const ax = a % S.grid.cols, ay = (a/S.grid.cols)|0;
+    const bx = b % S.grid.cols, by = (b/S.grid.cols)|0;
+    const ak = ax/S.grid.cols + ay/S.grid.rows;
+    const bk = bx/S.grid.cols + by/S.grid.rows;
+    if (ak !== bk) return ak - bk;
+    return (ax*31 + ay*17) - (bx*31 + by*17);
+  });
+}
+
+function matchCell(targetLab, cx, cy){
+  // penalty coefs
+  const lambda = S.params.lambda;
+  const mu = S.params.mu;
+
+  // neighbor tile ids
+  const neighbors = [];
+  const w = S.grid.cols, h = S.grid.rows;
+  const NI = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1]];
+  for (const [dx,dy] of NI){
+    const nx = cx+dx, ny = cy+dy;
+    if (nx<0||ny<0||nx>=w||ny>=h) continue;
+    const id = S.placements[ny*w + nx];
+    if (id !== 0xFFFF) neighbors.push(id);
+  }
+
+  let bestScore = Infinity, bestTile = null, bestLabD = 0;
+  const pool = S.pool;
+  for (let i=0;i<pool.length;i++){
+    const t = pool[i];
+    const dl=t.lab[0]-targetLab[0], da=t.lab[1]-targetLab[1], db=t.lab[2]-targetLab[2];
+    const labD = Math.sqrt(dl*dl + da*da + db*db);
+    let score = labD;
+    if (lambda > 0) score += lambda * 24 * Math.log(1 + t.usage);
+    if (mu > 0 && neighbors.length){
+      // penalty if any neighbor tile LAB is within 3 of this tile
+      for (const nid of neighbors){
+        const nt = pool[nid];
+        const ndl = nt.lab[0]-t.lab[0], nda = nt.lab[1]-t.lab[1], ndb = nt.lab[2]-t.lab[2];
+        const nD = Math.sqrt(ndl*ndl + nda*nda + ndb*ndb);
+        if (nD < 3) { score += mu * 40 * (3 - nD); break; }
+        if (nid === t.id) { score += mu * 80; break; }
+      }
+    }
+    if (score < bestScore){ bestScore = score; bestTile = t; bestLabD = labD; }
+  }
+  return { tile: bestTile, labD: bestLabD };
+}
+
+function drawCursor(cx, cy){
+  if (cx < 0){ $('#ch-cell').textContent='cell —'; $('#ch-coord').textContent='—'; return; }
+  $('#ch-cell').innerHTML = `cell (${cx},${cy})`;
+  $('#ch-coord').textContent = `x=${cx*TILE_CELL_PX}, y=${cy*TILE_CELL_PX}`;
+}
+
+function updateProgress(done, total, cps, t0, meanDe, meanUse){
+  const pct = done/total;
+  $('#progress-fill').style.right = ((1-pct)*100).toFixed(2) + '%';
+  $('#cells-done').textContent = done.toLocaleString();
+  $('#ch-done').innerHTML = `<b>${done.toLocaleString()} / ${total.toLocaleString()}</b>`;
+  $('#ch-pct').textContent = (pct*100).toFixed(1) + '%';
+  $('#progress-label').textContent = done === total ? 'complete' : 'weaving';
+  if (cps > 0) $('#cps').innerHTML = `${cps}<em>·</em>`;
+  const elapsedMs = performance.now() - t0;
+  const elapsedS = elapsedMs/1000;
+  $('#elapsed').innerHTML = `${elapsedS.toFixed(1)}<em>s</em>`;
+  if (done < total && cps > 0){
+    const remain = (total-done)/cps;
+    $('#eta').innerHTML = `${remain.toFixed(0)}<em>s</em>`;
+  } else {
+    $('#eta').innerHTML = `—`;
+  }
+  if (meanDe !== undefined) $('#mean-de').textContent = meanDe.toFixed(2);
+  if (meanUse !== undefined) $('#mean-use').textContent = meanUse.toFixed(1) + '×';
+  $('#clock').textContent = new Date().toTimeString().slice(0,8);
+}
+
+/* ---------- log ---------- */
+const LOG = $('#log-list');
+const LOG_COUNT_EL = $('#log-count');
+function addLogEntry(cx, cy, tile, labD, targetLab){
+  const now = performance.now();
+  const ts = ((now % 60000)/1000).toFixed(3);
+  const div = document.createElement('div');
+  const reason = pickReason(tile, labD, targetLab);
+  div.className = 'log-entry' + (labD > 4 ? ' verdict' : '');
+  div.innerHTML = `
+    <span class="log-ts">${ts}s</span>
+    <span class="log-cell">cell <em>(${cx},${cy})</em></span>
+    <span class="log-pick" title="${esc(tile.name)}">→ ${esc(trimName(tile.name))}</span>
+    <span class="log-meta">
+      <span class="tag lab">ΔE <b>${labD.toFixed(2)}</b></span>
+      <span class="tag usage">×<b>${tile.usage}</b></span>
+      <span class="tag rsn">${reason}</span>
+    </span>
+  `;
+  LOG.appendChild(div);
+  LOG_COUNT_EL.textContent = (+LOG_COUNT_EL.textContent.replace(/,/g,'') + 1).toLocaleString();
+  while (LOG.children.length > 28) LOG.removeChild(LOG.firstChild);
+  LOG.scrollTop = LOG.scrollHeight;
+}
+function pickReason(t, labD){
+  if (t.usage === 1 && labD > 3.5) return 'forced cold · low-ink';
+  if (t.usage > 30) return 'hot match · ' + t.usage + '× reused';
+  if (labD < 1) return 'near-exact LAB';
+  if (labD < 3) return 'close-color';
+  if (labD < 6) return 'neighborly';
+  return 'best-available';
+}
+function trimName(n){ return n.length > 28 ? n.slice(0, 14)+'…'+n.slice(-11) : n; }
+function esc(s){ return s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* ---------- download ---------- */
+function download(){
+  if (!S.target) return;
+  const out = $('#out-canvas');
+  out.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const base = (S.targetName || 'target').replace(/\.[^.]+$/, '');
+    a.download = `${base}__mosaic_${S.grid.cols}x${S.grid.rows}.png`;
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+  }, 'image/png');
+}
+
+/* ---------- overlay state machine ---------- */
+function refreshOverlay(){
+  const o = $('#mosaic-overlay');
+  const title = $('#overlay-title');
+  const sub = $('#overlay-sub');
+  const cta = $('#pool-pick');
+  const demo = $('#pool-demo');
+
+  if (!S.target && !S.poolReady){
+    title.innerHTML = 'Drop a target + photos<br/>to start <em>weaving</em>.';
+    sub.textContent = '100% local · photos never leave your browser';
+    cta.textContent = 'Choose photos';
+    cta.disabled = false;
+    demo.style.display = 'inline';
+    o.classList.remove('hidden');
+  } else if (S.target && !S.poolReady){
+    title.innerHTML = 'Target loaded.<br/>Now drop your <em>photos</em>.';
+    sub.textContent = 'drop a folder or many images';
+    cta.textContent = 'Choose photos';
+    cta.disabled = false;
+    demo.style.display = 'inline';
+    o.classList.remove('hidden');
+  } else if (!S.target && S.poolReady){
+    title.innerHTML = 'Pool ready: ' + S.pool.length + '.<br/>Now drop a <em>target</em>.';
+    sub.textContent = 'the image your mosaic will become';
+    cta.textContent = 'Choose target';
+    cta.disabled = false;
+    demo.style.display = 'none';
+    cta.onclick = () => $('#target-file').click();
+    o.classList.remove('hidden');
+  } else if (!S.running){
+    title.innerHTML = 'Ready. <em>' + (S.grid.cols * S.grid.rows).toLocaleString() + '</em> cells.<br/>' + S.pool.length.toLocaleString() + ' tiles in the pool.';
+    sub.textContent = 'tune the sliders or just weave';
+    cta.textContent = 'Weave';
+    cta.disabled = false;
+    demo.style.display = 'none';
+    cta.onclick = weave;
+    o.classList.remove('hidden');
+  } else {
+    o.classList.add('hidden');
+  }
+}
+
+/* ---------- utilities ---------- */
+function nextFrame(){ return new Promise(r => requestAnimationFrame(()=>r())); }
+
+function toast(msg){
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = `
+    position:fixed;bottom:32px;left:50%;transform:translateX(-50%);
+    z-index:9999;padding:12px 24px;background:var(--bg-3);border:1px solid var(--amber);
+    color:var(--amber);font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;
+    box-shadow:0 8px 40px rgba(0,0,0,.6);
+  `;
+  document.body.appendChild(t);
+  setTimeout(()=>t.style.opacity='0', 2400);
+  setTimeout(()=>t.remove(), 2900);
+}
+
+function finalToast(){
+  const used = S.pool.filter(p => p.usage>0).length;
+  const cold = S.pool.length - used;
+  const hottest = [...S.pool].sort((a,b)=>b.usage-a.usage)[0];
+  toast(`Done. ${used.toLocaleString()} of ${S.pool.length.toLocaleString()} tiles used · ${cold.toLocaleString()} in 冷宫 · hottest: ${trimName(hottest.name)} (${hottest.usage}×)`);
+}
+
+/* ---------- DEMO POOL (procedural) ---------- */
+async function loadDemoPool(){
+  $('#pool-sub').textContent = 'generating demo pool…';
+  const N = 800;
+  const files = [];
+  for (let i=0;i<N;i++){
+    const cv = document.createElement('canvas');
+    cv.width = 32; cv.height = 32;
+    const ctx = cv.getContext('2d');
+    // Procedural gradient swatch
+    const h1 = Math.random()*360;
+    const h2 = (h1 + (Math.random()-0.5)*60 + 360) % 360;
+    const s1 = 20 + Math.random()*55;
+    const s2 = 20 + Math.random()*55;
+    const l1 = 15 + Math.random()*70;
+    const l2 = 10 + Math.random()*70;
+    const g = ctx.createLinearGradient(0, 0, 32, 32);
+    g.addColorStop(0, `hsl(${h1},${s1}%,${l1}%)`);
+    g.addColorStop(1, `hsl(${h2},${s2}%,${l2}%)`);
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,32,32);
+    // add subtle noise
+    const img = ctx.getImageData(0,0,32,32);
+    for (let k=0;k<img.data.length;k+=4){
+      const n = (Math.random()-0.5)*24;
+      img.data[k] = Math.max(0,Math.min(255,img.data[k]+n));
+      img.data[k+1] = Math.max(0,Math.min(255,img.data[k+1]+n));
+      img.data[k+2] = Math.max(0,Math.min(255,img.data[k+2]+n));
+    }
+    ctx.putImageData(img, 0, 0);
+    const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+    const f = new File([blob], `demo_${String(i).padStart(4,'0')}.png`, {type:'image/png'});
+    files.push(f);
+  }
+  await loadPool(files);
+}
+
+/* ═══════════════════════ EVENT WIRING ═══════════════════════ */
+
+/* target drop + click */
+const tDrop = $('#target-drop');
+const tFile = $('#target-file');
+tDrop.addEventListener('click', () => tFile.click());
+tDrop.addEventListener('dragover', e => { e.preventDefault(); tDrop.classList.add('drop-hover'); });
+tDrop.addEventListener('dragleave', () => tDrop.classList.remove('drop-hover'));
+tDrop.addEventListener('drop', e => {
+  e.preventDefault(); tDrop.classList.remove('drop-hover');
+  const f = [...e.dataTransfer.files].find(f => f.type.startsWith('image/'));
+  if (f) loadTarget(f);
+});
+tFile.addEventListener('change', e => { if (e.target.files[0]) loadTarget(e.target.files[0]); });
+$('#target-swap').addEventListener('click', e => { e.stopPropagation(); tFile.click(); });
+
+/* pool drop */
+const mDrop = $('#mosaic-drop');
+const pFile = $('#pool-file');
+const pFlat = $('#pool-file-flat');
+
+mDrop.addEventListener('dragover', e => { e.preventDefault(); mDrop.classList.add('drop-hover'); });
+mDrop.addEventListener('dragleave', e => {
+  if (e.currentTarget.contains(e.relatedTarget)) return;
+  mDrop.classList.remove('drop-hover');
+});
+mDrop.addEventListener('drop', async e => {
+  e.preventDefault(); mDrop.classList.remove('drop-hover');
+  // walk folder if possible
+  const items = [...e.dataTransfer.items];
+  const files = [];
+  // pull plain files first (works both for files-only drops and mixed)
+  for (const item of items){
+    const entry = item.webkitGetAsEntry?.();
+    if (entry && entry.isDirectory){
+      await walkDirectory(entry, files);
+    } else {
+      const f = item.getAsFile();
+      if (f) files.push(f);
+    }
+  }
+  if (files.length === 1 && files[0].type.startsWith('image/') && !S.target){
+    // if only one image dropped and no target yet, treat as target
+    loadTarget(files[0]); return;
+  }
+  if (files.length) loadPool(files);
+});
+
+async function walkDirectory(dir, out){
+  const reader = dir.createReader();
+  const entries = await new Promise(r => reader.readEntries(r));
+  for (const entry of entries){
+    if (entry.isFile){
+      const f = await new Promise(r => entry.file(r));
+      if (f.type.startsWith('image/')) out.push(f);
+    } else if (entry.isDirectory){
+      await walkDirectory(entry, out);
+    }
+  }
+}
+
+$('#pool-pick').addEventListener('click', () => {
+  // If target not loaded, single-image pick triggers target; otherwise multi-file pool
+  if (!S.target) { tFile.click(); return; }
+  pFlat.click();
+});
+$('#pool-demo').addEventListener('click', loadDemoPool);
+pFlat.addEventListener('change', e => {
+  if (e.target.files.length) loadPool(e.target.files);
+});
+pFile.addEventListener('change', e => {
+  if (e.target.files.length) loadPool(e.target.files);
+});
+
+/* sliders */
+document.querySelectorAll('.slider').forEach(s => {
+  if (s.hasAttribute('disabled')) return;
+  const track = s.querySelector('.slider-track');
+  const fill = s.querySelector('.slider-fill');
+  const knob = s.querySelector('.slider-knob');
+  const val = s.querySelector('.slider-val');
+  const param = s.dataset.param;
+  let dragging = false;
+
+  function update(e){
+    const r = track.getBoundingClientRect();
+    const x = (e.clientX || e.touches?.[0]?.clientX) - r.left;
+    const pct = Math.max(0, Math.min(100, (x / r.width) * 100));
+    fill.style.width = pct + '%';
+    knob.style.left = pct + '%';
+    val.textContent = (pct/100).toFixed(2);
+    s.dataset.value = pct.toFixed(0);
+    if (param && S.params[param] !== undefined) S.params[param] = pct/100;
+  }
+  track.addEventListener('pointerdown', e => { dragging = true; track.setPointerCapture(e.pointerId); update(e); });
+  track.addEventListener('pointermove', e => { if (dragging) update(e); });
+  track.addEventListener('pointerup', () => { dragging = false; });
+});
+
+/* download */
+$('#download').addEventListener('click', download);
+
+/* clock tick */
+setInterval(()=>{ $('#clock').textContent = new Date().toTimeString().slice(0,8); }, 1000);
+
+/* memory ticker (best-effort) */
+setInterval(()=>{
+  if (performance.memory){
+    const mb = (performance.memory.usedJSHeapSize/1e6).toFixed(0);
+    $('#mem').textContent = mb + ' MB';
+  } else {
+    $('#mem').textContent = S.pool.length ? ((S.pool.length*1.2)|0) + ' MB' : '—';
+  }
+}, 2000);
+
+/* keyboard: enter = weave, esc = stop */
+window.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.target.matches('input,textarea')){
+    if (S.target && S.poolReady && !S.running) weave();
+  }
+  if (e.key === 'Escape' && S.running) S.shouldStop = true;
+});
+
+/* init */
+refreshOverlay();
+</script>
+</body>
+</html>
