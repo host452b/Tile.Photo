@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tile.Photo · 把你的相册拼成另一张照片</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand">
+      <span class="logo">▣</span>
+      <h1>Tile<span class="dot">.</span>Photo</h1>
+    </div>
+    <div class="tagline">
+      <span class="badge">100% local</span>
+      <span>把你硬盘里的照片重组成另一张照片,全程不离开浏览器。</span>
+    </div>
+    <div class="sys-status" id="sys-status" data-state="ready">
+      <span class="sys-dot"></span>
+      <span class="sys-text" id="sys-status-text">READY</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- STEP 1 · 目标图 -->
+    <section class="step" id="step-target">
+      <div class="step-head">
+        <span class="step-n">01</span>
+        <h2>选一张目标图</h2>
+        <span class="step-hint">它会被"像素化"成底图的网格</span>
+      </div>
+      <div class="dropzone" id="target-drop">
+        <input type="file" id="target-input" accept="image/*" hidden />
+        <div class="dz-placeholder" id="target-placeholder">
+          <div class="dz-icon">⬇</div>
+          <div>拖一张图进来,或 <button class="link-btn" id="target-pick">点击选择</button></div>
+        </div>
+        <div class="dz-preview" id="target-preview-wrap" hidden>
+          <canvas id="target-canvas"></canvas>
+          <div class="dz-meta" id="target-meta"></div>
+          <button class="ghost-btn" id="target-reset">换一张</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 2 · 底图池 -->
+    <section class="step" id="step-tiles">
+      <div class="step-head">
+        <span class="step-n">02</span>
+        <h2>倒一堆底图进来</h2>
+        <span class="step-hint" id="tiles-rec">先把目标图丢进上面的 01,我好告诉你到底需要多少张。</span>
+      </div>
+      <div class="dropzone" id="tiles-drop">
+        <input type="file" id="tiles-input" accept="image/*" multiple hidden />
+        <input type="file" id="tiles-dir-input" accept="image/*" multiple webkitdirectory hidden />
+        <div class="dz-placeholder" id="tiles-placeholder">
+          <div class="dz-icon">⎘</div>
+          <div>
+            拖文件夹进来,或
+            <button class="link-btn" id="tiles-pick-files">选多张文件</button> /
+            <button class="link-btn" id="tiles-pick-dir">选整个文件夹</button>
+          </div>
+        </div>
+        <div class="dz-preview" id="tiles-stats-wrap" hidden>
+          <div class="tiles-summary">
+            <span id="tiles-count">0</span> 张底图已就绪
+            <span class="muted" id="tiles-bytes"></span>
+            <button class="ghost-btn" id="tiles-reset">清空重传</button>
+          </div>
+          <div class="tiles-grid" id="tiles-grid"></div>
+        </div>
+        <div class="dz-progress" id="tiles-progress" hidden>
+          <div class="bar"><div class="bar-fill" id="tiles-bar"></div></div>
+          <div class="progress-text" id="tiles-progress-text">处理中…</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 3 · 参数 -->
+    <section class="step" id="step-params">
+      <div class="step-head">
+        <span class="step-n">03</span>
+        <h2>三个滑条决定一切</h2>
+        <span class="step-hint">默认值是甜区,动起来看看不同效果</span>
+      </div>
+      <div class="sliders">
+        <label class="slider-row">
+          <div class="slider-meta">
+            <span class="slider-name">格子密度</span>
+            <span class="slider-value" id="grid-value">100 × ··</span>
+          </div>
+          <input type="range" id="grid-input" min="30" max="240" value="100" />
+          <div class="slider-hint">越密越像原图,越稀越能看清底图。一张底图显示的像素 = 32。</div>
+        </label>
+
+        <label class="slider-row">
+          <div class="slider-meta">
+            <span class="slider-name">τ · 色调迁移</span>
+            <span class="slider-value" id="tau-value">40%</span>
+          </div>
+          <input type="range" id="tau-input" min="0" max="100" value="40" />
+          <div class="slider-hint">0 = 底图原色不动。100 = 完全贴目标色。40-60 是甜区。</div>
+        </label>
+
+        <label class="slider-row">
+          <div class="slider-meta">
+            <span class="slider-name">λ · 重复惩罚</span>
+            <span class="slider-value" id="lambda-value">0.30</span>
+          </div>
+          <input type="range" id="lambda-input" min="0" max="100" value="30" />
+          <div class="slider-hint">越高,一张万能照越不容易被狂贴。</div>
+        </label>
+
+        <label class="slider-row">
+          <div class="slider-meta">
+            <span class="slider-name">μ · 邻居惩罚</span>
+            <span class="slider-value" id="mu-value">0.50</span>
+          </div>
+          <input type="range" id="mu-input" min="0" max="100" value="50" />
+          <div class="slider-hint">越高,相邻格子越不会出现同款。</div>
+        </label>
+      </div>
+
+      <div class="action-row">
+        <button id="run-btn" class="primary-btn" disabled>开始拼</button>
+        <button id="cancel-btn" class="ghost-btn" hidden>中断</button>
+        <span class="action-status" id="action-status">等两边都就绪</span>
+      </div>
+    </section>
+
+    <!-- STEP 4 · 输出 -->
+    <section class="step" id="step-output" hidden>
+      <div class="step-head">
+        <span class="step-n">04</span>
+        <h2>看它思考</h2>
+        <span class="step-hint">左边实时拼图,右边日志告诉你它为什么这么选</span>
+      </div>
+      <div class="stage">
+        <div class="stage-canvas">
+          <div class="canvas-wrap" id="canvas-wrap">
+            <canvas id="output-canvas"></canvas>
+          </div>
+          <div class="stage-controls">
+            <button class="ghost-btn" id="zoom-fit">fit</button>
+            <button class="ghost-btn" id="zoom-1x">1 : 1</button>
+            <button class="ghost-btn" id="zoom-4x">4 ×</button>
+            <span class="muted" id="zoom-readout">100%</span>
+            <div class="spacer"></div>
+            <button class="ghost-btn" id="save-png" disabled>保存 PNG</button>
+          </div>
+        </div>
+        <div class="stage-log">
+          <div class="log-head">
+            <span>实时日志</span>
+            <span class="muted" id="progress-text">0 / 0</span>
+          </div>
+          <div class="log-stream" id="log-stream"></div>
+          <div class="log-foot">
+            <label><input type="checkbox" id="log-verbose" /> 显示被刷掉的候选</label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 5 · 报告 -->
+    <section class="step" id="step-report" hidden>
+      <div class="step-head">
+        <span class="step-n">05</span>
+        <h2>战报</h2>
+        <span class="step-hint">谁是劳模、谁打入冷宫。截图发朋友圈用。</span>
+      </div>
+      <div class="report" id="report-body"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <span>Tile.Photo · 本地跑的照片马赛克玩具</span>
+    <span class="muted">照片不上传,Worker 里算完 transferToImageBitmap 直达 canvas。</span>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
